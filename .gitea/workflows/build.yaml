@@ -1,0 +1,26 @@
+name: Cross Compile Fyne App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.16' # or later
+
+      - name: Install fyne-cross
+        run: go install github.com/fyne-io/fyne-cross@latest
+
+      - name: Cross Compile for Windows
+        run: |
+          fyne-cross windows -output soundscape-sync ./cmd/soundscape-sync/main.go 
