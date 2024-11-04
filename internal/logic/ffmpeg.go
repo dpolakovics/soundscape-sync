@@ -16,7 +16,7 @@ func findFFmpeg() (string, error) {
     
     // Add platform-specific fallback paths
     if runtime.GOOS == "windows" {
-      return ffstatic_darwin_amd64.FFmpegPath(), nil
+      return ffstatic_windows_amd64.FFmpegPath(), nil
     }
     
     return "", fmt.Errorf("FFmpeg not found")
