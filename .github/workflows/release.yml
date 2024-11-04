@@ -60,7 +60,8 @@ jobs:
     - name: Install fyne
       run: go install fyne.io/fyne/v2/cmd/fyne@latest
     - name: Build Fyne application for macOS
-      run: fyne package -os darwin -icon Icon.png
+      # run: fyne package -os darwin -icon Icon.png
+      run: GOOS=darwin GOARCH=arm64 go build -o SoundscapeSync.app
     - name: Upload macOS artifact
       uses: actions/upload-artifact@v4
       with:
