@@ -14,10 +14,11 @@ import (
 )
 
 var tempDir string
+var ffmpegPath string
+var ffprobePath string
 
 func getFFProbePath() (string, error) {
   getFFmpegPath()
-  ffprobePath := filepath.Join(tempDir, "ffmpeg", "ffprobe.exe")
   if _, err := os.Stat(ffprobePath); os.IsNotExist(err) {
     return "", err
   }
@@ -27,11 +28,13 @@ func getFFProbePath() (string, error) {
 
 
 func getFFmpegPath() (string, error) {
+    if ffmpegPath != "" {
+      return ffmpegPath, nil
+    }
     if tempDir == "" {
       tempDir = os.TempDir()
     }
     ffmpegDir := filepath.Join(tempDir, "ffmpeg")
-    ffmpegPath := filepath.Join(ffmpegDir, "ffmpeg.exe")
 
     if _, err := os.Stat(ffmpegPath); os.IsNotExist(err) {
         zipPath := filepath.Join(tempDir, "ffmpeg.zip")
@@ -59,7 +62,15 @@ func getFFmpegPath() (string, error) {
             }
             if info.Name() == "ffmpeg.exe" {
                 ffmpegPath = path
-                return io.EOF // Stop walking
+                if ffprobePath != "" {
+                  return io.EOF // Stop walking
+                }
+            }
+            if info.Name() == "ffprobe.exe" {
+                ffprobePath = path
+                if ffmpegPath != "" {
+                  return io.EOF // Stop walking
+                }
             }
             return nil
         })
