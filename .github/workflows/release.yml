@@ -128,7 +128,6 @@ jobs:
           name: macos-build
       - name: Unzip MacOS
         run: | 
-          zip -r SoundscapeSync.app Contents
           UPLOAD_URL=${{ steps.create_release.outputs.upload_url }}
           curl -X POST "$UPLOAD_URL?name=SoundscapeSync.app" \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
