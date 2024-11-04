@@ -11,43 +11,43 @@ permissions:
   contents: write
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: 1.22
-    - name: Install fyne-cross
-      run: go install github.com/fyne-io/fyne-cross@latest
-    - name: Cross-compile for Linux
-      run: fyne-cross linux
-    - name: Upload Linux artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: linux-build
-        path: fyne-cross/bin/linux-amd64
-
-  build-windows:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: 1.22
-    - name: Install fyne-cross
-      run: go install github.com/fyne-io/fyne-cross@latest
-    - name: Cross-compile for Windows
-      run: fyne-cross windows
-    - name: Cross-compile for Linux
-      run: fyne-cross linux
-    - name: Upload Windows artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: windows-build
-        path: fyne-cross/bin/windows-amd64
+  # build-linux:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #   - name: Set up Go
+  #     uses: actions/setup-go@v5
+  #     with:
+  #       go-version: 1.22
+  #   - name: Install fyne-cross
+  #     run: go install github.com/fyne-io/fyne-cross@latest
+  #   - name: Cross-compile for Linux
+  #     run: fyne-cross linux
+  #   - name: Upload Linux artifact
+  #     uses: actions/upload-artifact@v4
+  #     with:
+  #       name: linux-build
+  #       path: fyne-cross/bin/linux-amd64
+  #
+  # build-windows:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #   - name: Set up Go
+  #     uses: actions/setup-go@v5
+  #     with:
+  #       go-version: 1.22
+  #   - name: Install fyne-cross
+  #     run: go install github.com/fyne-io/fyne-cross@latest
+  #   - name: Cross-compile for Windows
+  #     run: fyne-cross windows
+  #   - name: Cross-compile for Linux
+  #     run: fyne-cross linux
+  #   - name: Upload Windows artifact
+  #     uses: actions/upload-artifact@v4
+  #     with:
+  #       name: windows-build
+  #       path: fyne-cross/bin/windows-amd64
 
   build-mac:
     runs-on: macos-latest
@@ -71,7 +71,8 @@ jobs:
 
   create-release:
     runs-on: ubuntu-latest
-    needs: [build-linux, build-windows, build-mac]
+    # needs: [build-linux, build-windows, build-mac]
+    needs: [build-mac]
     steps:
       - name: Create Release
         id: create_release
@@ -84,9 +85,9 @@ jobs:
           draft: true  # Set to true if you want to create a draft release
           prerelease: true  # Set to true if this is a prerelease
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: linux-build
+      # - uses: actions/download-artifact@v4
+      #   with:
+      #     name: linux-build
       # - name: Prepare DEB package
       #   run: |
       #     mkdir -p .debpkg/DEBIAN
@@ -110,24 +111,28 @@ jobs:
       #   run: |
       #     mv *.deb soundscapesync-${{ github.event.inputs.version }}.deb
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: windows-build
-      - name: Upload Windows Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub token for authentication
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}  # URL for uploading assets
-          asset_path: SoundscapeSync.exe  # Path to your asset file
-          asset_name: SoundscapeSync.exe  # Name of the asset file
-          asset_content_type: application/x-msdownload  # Content type of the asset
+      # - uses: actions/download-artifact@v4
+      #   with:
+      #     name: windows-build
+      # - name: Upload Windows Asset
+      #   uses: actions/upload-release-asset@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub token for authentication
+      #   with:
+      #     upload_url: ${{ steps.create_release.outputs.upload_url }}  # URL for uploading assets
+      #     asset_path: SoundscapeSync.exe  # Path to your asset file
+      #     asset_name: SoundscapeSync.exe  # Name of the asset file
+      #     asset_content_type: application/x-msdownload  # Content type of the asset
 
       - uses: actions/download-artifact@v4
         with:
           name: macos-build
       - name: Unzip MacOS
-        run: unzip SoundscapeSync.zip
+        run: |
+          unzip SoundscapeSync.zip
+          ls -al
+          unzip SoundscapeSync.app
+          ls -al
       - name: Upload MacOS Asset
         uses: actions/upload-release-asset@v1
         env:
