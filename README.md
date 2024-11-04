@@ -15,6 +15,7 @@ It is important that both folders have the same amount of Files and that the fil
 - [x] Add a progress bar
 - [ ] Make it possible to Sync with spatial Audio Soundscapes
 - [ ] Make it usable with Mac
+- [ ] Generate a package for Ubuntu
 
 ## Support Me
 [![Buy Me A Coffee](https://cdn.buymeacoffee.com/buttons/default-orange.png)](https://www.buymeacoffee.com/razormind)
