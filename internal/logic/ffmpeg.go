@@ -6,7 +6,12 @@ package logic
 import (
   "fmt"
   "os/exec"
+  "syscall"
 )
+
+func getSysProcAttr() *syscall.SysProcAttr {
+  return &syscall.SysProcAttr{}
+}
 
 func getFFProbePath() (string, error) {
   path, err := exec.LookPath("ffprobe")

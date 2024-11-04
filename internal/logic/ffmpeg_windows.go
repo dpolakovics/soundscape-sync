@@ -11,6 +11,7 @@ import (
   "os"
   "path/filepath"
   "strings"
+  "syscall"
 )
 
 var tempDir string
@@ -24,6 +25,10 @@ func getFFProbePath() (string, error) {
   }
 
   return ffprobePath, nil
+}
+
+func getSysProcAttr() *syscall.SysProcAttr {
+  return &syscall.SysProcAttr{HideWindow: true}
 }
 
 
