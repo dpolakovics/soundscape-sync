@@ -13,17 +13,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: '1.22' # or later
+      # - name: Set up Go
+      #   uses: actions/setup-go@v2
+      #   with:
+      #     go-version: '1.22' # or later
 
-      - name: Install fyne-cross
-        run: |
-          go install github.com/fyne-io/fyne-cross@latest
+      # - name: Install fyne-cross
+      #   run: |
+      #     go install github.com/fyne-io/fyne-cross@latest
 
       - name: Cross Compile for Windows
         run: |
-          ls -al /app/
-          ls -al
-          fyne-cross windows -output soundscape-sync -icon logo.png ./cmd/soundscape-sync/main.go 
+          docker run -t --rm --name application-name -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd):$(pwd) -w $(pwd) golang:alpine3.19 /bin/ash -c "go install github.com/fyne-io/fyne-cross@latest && fyne-cross windows -output soundscape-sync -icon logo.png ./cmd/soundscape-sync/main.go"
