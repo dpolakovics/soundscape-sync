@@ -14,7 +14,7 @@ jobs:
     - name: Install fyne-cross
       run: go install github.com/fyne-io/fyne-cross@latest
     - name: Cross-compile for Windows
-      run: fyne-cross windows -app-id com.cloonar.soundscapesync
+      run: fyne-cross windows
     - name: Cross-compile for Linux
       run: fyne-cross linux
     - name: Cross-compile for macOS
