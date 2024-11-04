@@ -41,7 +41,7 @@ jobs:
       run: fyne-cross windows
 
   build-mac:
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
     - uses: actions/checkout@v4
     - name: Set up Go
