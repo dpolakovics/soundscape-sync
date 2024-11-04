@@ -27,7 +27,7 @@ func getFFProbePath() (string, error) {
 
 
 func getFFmpegPath() (string, error) {
-    if tmpDir == "" {
+    if tempDir == "" {
       tempDir = os.TempDir()
     }
     ffmpegDir := filepath.Join(tempDir, "ffmpeg")
