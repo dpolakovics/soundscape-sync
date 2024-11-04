@@ -127,19 +127,13 @@ jobs:
         with:
           name: macos-build
       - name: Unzip MacOS
-        run: |
-          unzip SoundscapeSync.zip
-          ls -al
+        run: unzip SoundscapeSync.zip
       - name: Upload MacOS Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub token for authentication
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}  # URL for uploading assets
-          asset_path: SoundscapeSync.zip  # Path to your asset file
+          asset_path: SoundscapeSync.app  # Path to your asset file
           asset_name: SoundscapeSync.app  # Name of the asset file
           asset_content_type: application/octet-stream  # Content type of the asset
-
-      - name: show folders
-        run: | 
-          ls -al
