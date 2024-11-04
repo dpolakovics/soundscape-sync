@@ -20,10 +20,8 @@ jobs:
 
       - name: Install fyne-cross
         run: |
-          go install fyne.io/fyne/v2/cmd/fyne@latest
-          # go install github.com/fyne-io/fyne-cross@latest
+          go install github.com/fyne-io/fyne-cross@latest
 
       - name: Cross Compile for Windows
         run: |
-          fyne package -os windows -icon Icon.png
-          # fyne-cross windows -output soundscape-sync ./cmd/soundscape-sync/main.go 
+          fyne-cross windows -output soundscape-sync -icon Icon.png ./cmd/soundscape-sync/main.go 
