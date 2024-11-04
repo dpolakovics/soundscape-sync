@@ -5,6 +5,7 @@ import (
   "fmt"
   "os/exec"
   "path/filepath"
+  "syscall"
 
   "fyne.io/fyne/v2/widget"
 )
@@ -47,6 +48,7 @@ func combineStereoFiles(folder1 string, folder2 string, outputFolder string, pro
           "pipe:1",
 		      "-map", "[a]",
           outputFolder + "/" + filepath.Base(file))
+      cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
       stdout, err := cmd.StdoutPipe()
       if err != nil {
           return err
