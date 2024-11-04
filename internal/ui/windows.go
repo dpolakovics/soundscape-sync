@@ -1,7 +1,10 @@
 package ui
 
 import (
+    _ "embed"
+    "os/exec"
     "path/filepath"
+    "runtime"
 
     "fyne.io/fyne/v2"
     "fyne.io/fyne/v2/container"
@@ -10,6 +13,9 @@ import (
 
     "soundscape-sync/internal/logic"
 )
+
+//go:embed bmc.png
+var bmcPng []byte
 
 func CreateMainContent(window fyne.Window) fyne.CanvasObject {
     var folder1, folder2, folderOutput string
@@ -92,6 +98,24 @@ func CreateMainContent(window fyne.Window) fyne.CanvasObject {
             startButton.Enable()
         }()
     }
+    
+    // Create an image for the Buy Me a Coffee button
+    bmcResource := fyne.NewStaticResource("bmc.png", bmcPng)
+
+    // Create the Buy Me a Coffee button with an image
+    bmcButton := widget.NewButtonWithIcon("Buy me a coffee", bmcResource, func() {
+        var cmd *exec.Cmd
+        if runtime.GOOS == "windows" {
+            cmd = exec.Command("cmd", "/c", "start", "https://www.buymeacoffee.com/razormind") // Change to your actual URL
+        } else if runtime.GOOS == "darwin" {
+            cmd = exec.Command("open", "https://www.buymeacoffee.com/razormind") // Change to your actual URL
+        } else {
+            cmd = exec.Command("xdg-open", "https://www.buymeacoffee.com/razormind") // Change to your actual URL
+        }
+        cmd.Start()
+    })
+    // bmcButton.SetMinSize(bmcImage.Size())
+    // bmcButton.Resize(bmcImage.Size())
 
     // Create and return the main content
     return container.NewVBox(
@@ -100,6 +124,7 @@ func CreateMainContent(window fyne.Window) fyne.CanvasObject {
         container.NewHBox(folderOutputButton, folderOutputLabel),
         startButton,
         progressBar,
+        bmcButton,
     )
 }
 
