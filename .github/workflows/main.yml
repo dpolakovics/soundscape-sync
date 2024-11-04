@@ -46,18 +46,8 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: 1.16
-    - name: Install fyne-cross
-      run: go install github.com/fyne-io/fyne-cross@latest
-    # - name: Install Homebrew
-    #   run: |
-    #     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    # - name: Install Docker
-    #   run: |
-    #     brew install docker
-    - name: Install QEMU 9.0.2
-      uses: docker/actions-toolkit/.github/actions/macos-setup-qemu@19ca9ade20f5da695f76a10988d6532058575f82
-    - name: Set up Docker
-      uses: crazy-max/ghaction-setup-docker@v3
+    - name: Install fyne
+      run: go install fyne.io/fyne/v2/cmd/fyne@latest
     - name: Build Fyne application for macOS
       env:
         CGO_ENABLED: 1
@@ -65,9 +55,8 @@ jobs:
         GOARCH: amd64 # Change if targeting a different architecture
         CC: o32-clang # Specify your C compiler here
       run: |
-        set -x
-        docker version
-        fyne-cross darwin
+        fyne package -os darwin -icon Icon.png
+        ls -al
     - name: Upload macOS artifact
       uses: actions/upload-artifact@v3
       with:
