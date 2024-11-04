@@ -72,28 +72,28 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: linux-build
-      - name: Prepare DEB package
-        run: |
-          mkdir -p .debpkg/DEBIAN
-          echo "Package: SoundscapeSync" > .debpkg/DEBIAN/control
-          echo "Version: ${{ github.event.inputs.version }}" >> .debpkg/DEBIAN/control
-          echo "Architecture: amd64" >> .debpkg/DEBIAN/control
-          echo "Maintainer: Dominik Polakovics <dominik.polakovics@cloonar.com>" >> .debpkg/DEBIAN/control
-          mkdir -p .debpkg/usr/bin
-          cp fyne-cross/bin/linux-amd64/soundscape-sync .debpkg/usr/bin
-      - name: Create DEB package
-        uses: jiro4989/build-deb-action@v3
-        with:
-          package: SoundscapeSync
-          package_root: .debpkg
-          maintainer: "Dominik Polakovics <dominik.polakovics@cloonar.com>"
-          version: "${{ github.event.inputs.version }}"
-          arch: 'amd64'
-          desc: 'This is my sample package.'
-          depends: 'ffmpeg'
-      - name: get file name
-        run: |
-          mv *.deb soundscapesync-${{ github.event.inputs.version }}.deb
+      # - name: Prepare DEB package
+      #   run: |
+      #     mkdir -p .debpkg/DEBIAN
+      #     echo "Package: SoundscapeSync" > .debpkg/DEBIAN/control
+      #     echo "Version: ${{ github.event.inputs.version }}" >> .debpkg/DEBIAN/control
+      #     echo "Architecture: amd64" >> .debpkg/DEBIAN/control
+      #     echo "Maintainer: Dominik Polakovics <dominik.polakovics@cloonar.com>" >> .debpkg/DEBIAN/control
+      #     mkdir -p .debpkg/usr/bin
+      #     cp fyne-cross/bin/linux-amd64/soundscape-sync .debpkg/usr/bin
+      # - name: Create DEB package
+      #   uses: jiro4989/build-deb-action@v3
+      #   with:
+      #     package: SoundscapeSync
+      #     package_root: .debpkg
+      #     maintainer: "Dominik Polakovics <dominik.polakovics@cloonar.com>"
+      #     version: "${{ github.event.inputs.version }}"
+      #     arch: 'amd64'
+      #     desc: 'This is my sample package.'
+      #     depends: 'ffmpeg'
+      # - name: get file name
+      #   run: |
+      #     mv *.deb soundscapesync-${{ github.event.inputs.version }}.deb
 
       - uses: actions/download-artifact@v4
         with:
