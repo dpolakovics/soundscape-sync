@@ -48,6 +48,13 @@ jobs:
         go-version: 1.16
     - name: Install fyne-cross
       run: go install github.com/fyne-io/fyne-cross@latest
+    - name: Install Homebrew
+      run: |
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    - name: Install Colima and Docker
+      run: |
+        brew install colima
+        colima start
     - name: Build Fyne application for macOS
       env:
         CGO_ENABLED: 1
