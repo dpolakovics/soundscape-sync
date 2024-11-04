@@ -1,6 +1,7 @@
 package logic
 
 import (
+  "context"
   "fmt"
   "os/exec"
   "path/filepath"
@@ -28,20 +29,37 @@ func combineStereoFiles(folder1 string, folder2 string, outputFolder string, pro
         return err
     }
 
+    total := len(files1)
+
     for index, file := range files1 {
+      duration, err := getDuration(file)
+      if err != nil {
+          return err
+      }
+      
       // Construct FFmpeg command
-      cmd := exec.Command(ffmpegPath,
+      ctx, _ := context.WithCancel(context.Background())
+      cmd := exec.CommandContext(ctx, ffmpegPath,
           "-i", file,
           "-i", files2[index],
           "-filter_complex", "[0:a][1:a]amerge=inputs=2,pan=stereo|c0<c0+c2|c1<c1+c3[a]",
+          "-progress",
+          "pipe:1",
 		      "-map", "[a]",
           outputFolder + "/" + filepath.Base(file))
-      cmd.Stdout = nil
-      cmd.Stderr = nil
+      stdout, err := cmd.StdoutPipe()
+      if err != nil {
+          return err
+      }
 
       // Execute FFmpeg command
-      err = cmd.Run()
-      if err != nil {
+      if err := cmd.Start(); err != nil {
+          return err
+      }
+
+      parseProgress(index, total, progress, stdout, duration)
+
+      if err := cmd.Wait(); err != nil {
           return err
       }
     }
@@ -51,3 +69,5 @@ func combineStereoFiles(folder1 string, folder2 string, outputFolder string, pro
     progress.SetValue(1.0)
     return nil
 }
+
+

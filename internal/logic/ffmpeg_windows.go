@@ -15,8 +15,21 @@ import (
 
 var tempDir string
 
+func getFFProbePath() (string, error) {
+  getFFmpegPath()
+  ffprobePath := filepath.Join(tempDir, "ffmpeg", "ffprobe.exe")
+  if _, err := os.Stat(ffprobePath); os.IsNotExist(err) {
+    return "", err
+  }
+
+  return ffprobePath, nil
+}
+
+
 func getFFmpegPath() (string, error) {
-    tempDir = os.TempDir()
+    if tmpDir == "" {
+      tempDir = os.TempDir()
+    }
     ffmpegDir := filepath.Join(tempDir, "ffmpeg")
     ffmpegPath := filepath.Join(ffmpegDir, "ffmpeg.exe")
 
