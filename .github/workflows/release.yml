@@ -12,56 +12,27 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Set up Go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v5
       with:
         go-version: 1.22
     - name: Install fyne-cross
       run: go install github.com/fyne-io/fyne-cross@latest
     - name: Cross-compile for Linux
       run: fyne-cross linux
-
-    - name: Prepare DEB package
-      run: |
-        mkdir -p .debpkg/DEBIAN
-        echo "Package: SoundscapeSync" > .debpkg/DEBIAN/control
-        echo "Version: 1.0" >> .debpkg/DEBIAN/control
-        echo "Architecture: amd64" >> .debpkg/DEBIAN/control
-        echo "Maintainer: Dominik Polakovics <dominik.polakovics@cloonar.com>" >> .debpkg/DEBIAN/control
-        mkdir -p .debpkg/usr/bin
-        cp fyne-cross/bin/linux-amd64/soundscape-sync .debpkg/usr/bin
-    - name: Create DEB package
-      uses: jiro4989/build-deb-action@v3
-      with:
-        package: SoundscapeSync
-        package_root: .debpkg
-        maintainer: "Dominik Polakovics <dominik.polakovics@cloonar.com>"
-        version: 1.0
-        arch: 'amd64'
-        desc: 'This is my sample package.'
-        depends: 'ffmpeg'
-    - name: get file name
-      run: |
-        mv *.deb soundscapesync-1.0.deb
-
     - name: Upload Linux artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: linux-build
         path: fyne-cross/bin/linux-amd64
-    - name: Upload Debian artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: debian-build
-        path: soundscapesync-1.0.deb
 
   build-windows:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Set up Go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v5
       with:
         go-version: 1.22
     - name: Install fyne-cross
@@ -71,7 +42,7 @@ jobs:
     - name: Cross-compile for Linux
       run: fyne-cross linux
     - name: Upload Windows artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: windows-build
         path: fyne-cross/bin/windows-amd64
@@ -79,9 +50,9 @@ jobs:
   build-mac:
     runs-on: macos-13
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Set up Go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v5
       with:
         go-version: 1.22
     - name: Install fyne
@@ -89,7 +60,7 @@ jobs:
     - name: Build Fyne application for macOS
       run: fyne package -os darwin -icon Icon.png
     - name: Upload macOS artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: macos-build
         path: SoundscapeSync.app
