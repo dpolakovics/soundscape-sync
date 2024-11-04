@@ -4,14 +4,13 @@
 package logic
 
 import (
+  "archive/zip"
   "fmt"
   "io"
   "net/http"
   "os"
-  "os/exec"
   "path/filepath"
-  "runtime"
-  ffstatic_windows_amd64 "github.com/go-ffstatic/windows-amd64"
+  "strings"
 )
 
 var tempDir string
