@@ -36,6 +36,8 @@ func combineStereoFiles(folder1 string, folder2 string, outputFolder string, pro
           "-filter_complex", "[0:a][1:a]amerge=inputs=2,pan=stereo|c0<c0+c2|c1<c1+c3[a]",
 		      "-map", "[a]",
           outputFolder + "/" + filepath.Base(file))
+      cmd.Stdout = nil
+      cmd.Stderr = nil
 
       // Execute FFmpeg command
       err = cmd.Run()
