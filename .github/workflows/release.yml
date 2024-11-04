@@ -50,7 +50,7 @@ jobs:
   #       path: fyne-cross/bin/windows-amd64
 
   build-mac:
-    runs-on: macos-latest-xlarge
+    runs-on: macos-latest
     steps:
     - uses: actions/checkout@v4
     - name: Set up Go
