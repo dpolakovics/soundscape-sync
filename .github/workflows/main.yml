@@ -39,7 +39,7 @@ jobs:
         name: linux-build
         path: fyne-cross/bin/linux-amd64
   build-mac:
-    runs-on: macos-latest
+    runs-on: macos-13
     steps:
     - uses: actions/checkout@v2
     - name: Set up Go
@@ -54,6 +54,8 @@ jobs:
     # - name: Install Docker
     #   run: |
     #     brew install docker
+    - name: Install QEMU 9.0.2
+      uses: docker/actions-toolkit/.github/actions/macos-setup-qemu@19ca9ade20f5da695f76a10988d6532058575f82
     - name: Set up Docker
       uses: crazy-max/ghaction-setup-docker@v3
     - name: Build Fyne application for macOS
