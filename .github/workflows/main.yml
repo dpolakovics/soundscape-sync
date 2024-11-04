@@ -28,22 +28,22 @@ jobs:
       with:
         name: linux-build
         path: fyne-cross/bin/linux-amd64
-  build-mac:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Set up Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.16
-    - name: Set up Docker
-      uses: docker/setup-buildx-action@v2
-    - name: Install fyne-cross
-      run: go install github.com/fyne-io/fyne-cross@latest
-    - name: Cross-compile for macOS
-      run: fyne-cross darwin
-    - name: Upload macOS artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: macos-build
-        path: fyne-cross/bin/darwin-amd64
+  # build-mac:
+  #   runs-on: macos-latest
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Set up Go
+  #     uses: actions/setup-go@v2
+  #     with:
+  #       go-version: 1.16
+  #   - name: Set up Docker
+  #     uses: docker/setup-buildx-action@v2
+  #   - name: Install fyne-cross
+  #     run: go install github.com/fyne-io/fyne-cross@latest
+  #   - name: Cross-compile for macOS
+  #     run: fyne-cross darwin
+  #   - name: Upload macOS artifact
+  #     uses: actions/upload-artifact@v3
+  #     with:
+  #       name: macos-build
+  #       path: fyne-cross/bin/darwin-amd64
