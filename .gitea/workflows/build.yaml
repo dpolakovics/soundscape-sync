@@ -24,4 +24,4 @@ jobs:
 
       - name: Cross Compile for Windows
         run: |
-          fyne-cross windows -output soundscape-sync -icon Icon.png ./cmd/soundscape-sync/main.go 
+          fyne-cross windows -output soundscape-sync -icon logo.png ./cmd/soundscape-sync/main.go 
