@@ -50,7 +50,7 @@ jobs:
         depends: 'ffmpeg'
     - name: get file name
       run: |
-        ls -al
+        mv *.deb soundscapesync-1.0.deb
 
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v3
@@ -62,6 +62,11 @@ jobs:
       with:
         name: linux-build
         path: fyne-cross/bin/linux-amd64
+    - name: Upload Debian artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: debian-build
+        path: soundscapesync-1.0.deb
   build-mac:
     runs-on: macos-13
     steps:
