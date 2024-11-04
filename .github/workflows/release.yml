@@ -130,9 +130,7 @@ jobs:
       - name: Unzip MacOS
         run: |
           unzip SoundscapeSync.zip
-          ls -al
-          unzip SoundscapeSync.app
-          ls -al
+          ls -al SoundscapeSync.app
       - name: Upload MacOS Asset
         uses: actions/upload-release-asset@v1
         env:
