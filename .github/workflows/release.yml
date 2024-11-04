@@ -58,12 +58,14 @@ jobs:
     - name: Install fyne
       run: go install fyne.io/fyne/v2/cmd/fyne@latest
     - name: Build Fyne application for macOS
-      run: fyne package -os darwin -icon Icon.png
+      run: |
+        fyne package -os darwin -icon Icon.png
+        zip -r SoundscapeSync.zip SoundscapeSync.app
     - name: Upload macOS artifact
       uses: actions/upload-artifact@v4
       with:
         name: macos-build
-        path: SoundscapeSync.app
+        path: SoundscapeSync.zip
 
   create-release:
     runs-on: ubuntu-latest
@@ -106,4 +108,3 @@ jobs:
       - name: show folders
         run: | 
           ls -al
-          ls -al macos-build/
