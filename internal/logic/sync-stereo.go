@@ -23,7 +23,10 @@ func combineStereoFiles(folder1 string, folder2 string, outputFolder string, pro
         return fmt.Errorf("the number of audio files in the two folders must be the same")
     }
 
-    ffmpegPath, err := findFFmpeg()
+    ffmpegPath, err := getFFmpegPath()
+    if err != nil {
+        return err
+    }
 
     for index, file := range files1 {
       // Construct FFmpeg command
@@ -40,6 +43,8 @@ func combineStereoFiles(folder1 string, folder2 string, outputFolder string, pro
           return err
       }
     }
+
+    cleanupTemp()
 
     progress.SetValue(1.0)
     return nil
