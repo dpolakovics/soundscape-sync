@@ -49,11 +49,6 @@ jobs:
     - name: Install fyne
       run: go install fyne.io/fyne/v2/cmd/fyne@latest
     - name: Build Fyne application for macOS
-      env:
-        CGO_ENABLED: 1
-        GOOS: darwin
-        GOARCH: amd64 # Change if targeting a different architecture
-        CC: o32-clang # Specify your C compiler here
       run: |
         fyne package -os darwin -icon Icon.png
         ls -al
