@@ -11,24 +11,24 @@ permissions:
   contents: write
 
 jobs:
-  # build-linux:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - uses: actions/checkout@v4
-  #   - name: Set up Go
-  #     uses: actions/setup-go@v5
-  #     with:
-  #       go-version: 1.22
-  #   - name: Install fyne-cross
-  #     run: go install github.com/fyne-io/fyne-cross@latest
-  #   - name: Cross-compile for Linux
-  #     run: fyne-cross linux
-  #   - name: Upload Linux artifact
-  #     uses: actions/upload-artifact@v4
-  #     with:
-  #       name: linux-build
-  #       path: fyne-cross/bin/linux-amd64
-  #
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: 1.22
+    - name: Install fyne-cross
+      run: go install github.com/fyne-io/fyne-cross@latest
+    - name: Cross-compile for Linux
+      run: fyne-cross linux
+    - name: Upload Linux artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-build
+        path: fyne-cross/bin/linux-amd64
+
   build-windows:
     runs-on: ubuntu-latest
     steps:
@@ -41,8 +41,6 @@ jobs:
       run: go install github.com/fyne-io/fyne-cross@latest
     - name: Cross-compile for Windows
       run: fyne-cross windows
-    - name: Cross-compile for Linux
-      run: fyne-cross linux
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v4
       with:
@@ -107,6 +105,18 @@ jobs:
       # - name: get file name
       #   run: |
       #     mv *.deb soundscapesync-${{ github.event.inputs.version }}.deb
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-build
+      - name: Upload Linux Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub token for authentication
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}  # URL for uploading assets
+          asset_path: soundscape-sync  # Path to your asset file
+          asset_name: soundscape-sync-linux-x86  # Name of the asset file
+          asset_content_type: application/octet-stream  # Content type of the asset
 
       - uses: actions/download-artifact@v4
         with:
