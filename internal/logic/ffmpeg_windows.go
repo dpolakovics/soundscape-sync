@@ -5,7 +5,11 @@ package logic
 
 import (
   "fmt"
+  "io"
+  "net/http"
+  "os"
   "os/exec"
+  "path/filepath"
   "runtime"
   ffstatic_windows_amd64 "github.com/go-ffstatic/windows-amd64"
 )
@@ -22,7 +26,7 @@ func getFFmpegPath() (string, error) {
         ffmpegURL := "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
 
         // Download ZIP file
-        err := downloadFile(ffmpegURL, zipPath)
+        err := downloadFFmpeg(ffmpegURL, zipPath)
         if err != nil {
             return "", fmt.Errorf("failed to download FFmpeg: %v", err)
         }
