@@ -51,10 +51,9 @@ jobs:
     - name: Install Homebrew
       run: |
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    - name: Install Colima and Docker
+    - name: Install Docker
       run: |
-        brew install colima
-        colima start
+        brew install docker
     - name: Build Fyne application for macOS
       env:
         CGO_ENABLED: 1
