@@ -17,5 +17,31 @@ jobs:
       run: fyne-cross windows
     - name: Cross-compile for Linux
       run: fyne-cross linux
+    - name: Upload Windows artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: windows-build
+        path: fyne-cross/bin/windows-amd64
+        
+    - name: Upload Linux artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: linux-build
+        path: fyne-cross/bin/linux-amd64
+  build-mac:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.16
+    - name: Install fyne-cross
+      run: go install github.com/fyne-io/fyne-cross@latest
     - name: Cross-compile for macOS
       run: fyne-cross darwin
+    - name: Upload macOS artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: macos-build
+        path: fyne-cross/bin/darwin-amd64
