@@ -23,14 +23,34 @@ jobs:
         go-version: 1.22
     - name: Install fyne-cross
       run: go install github.com/fyne-io/fyne-cross@latest
-    - name: Install fyne
-      run: go install fyne.io/fyne/v2/cmd/fyne@latest
     - name: Cross-compile for Windows
       run: fyne-cross windows
     - name: Cross-compile for Linux
+      run: fyne-cross linux
+
+    - name: Prepare DEB package
       run: |
-        fyne-package -os linux -icon Icon.png
+        mkdir -p .debpkg/DEBIAN
+        echo "Package: SoundscapeSync" > .debpkg/DEBIAN/control
+        echo "Version: ${{ github.ref }}" >> .debpkg/DEBIAN/control
+        echo "Architecture: amd64" >> .debpkg/DEBIAN/control
+        echo "Maintainer: Dominik Polakovics <dominik.polakovics@cloonar.com>" >> .debpkg/DEBIAN/control
+        mkdir -p .debpkg/usr/bin
+        cp fyne-cross/bin/linux-amd64/soundscape-sync .debpkg/usr/bin
+    - name: Create DEB package
+      uses: jiro4989/build-deb-action@v3
+      with:
+        package: SoundscapeSync
+        package_root: .debpkg
+        maintainer: "Dominik Polakovics <dominik.polakovics@cloonar.com>"
+        version: ${{ github.ref }}
+        arch: 'amd64'
+        desc: 'This is my sample package.'
+        depends: 'ffmpeg'
+    - name: get file name
+      run: |
         ls -al
+
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v3
       with:
