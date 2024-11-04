@@ -28,28 +28,6 @@ jobs:
     - name: Cross-compile for Linux
       run: fyne-cross linux
 
-    - name: Prepare DEB package
-      run: |
-        mkdir -p .debpkg/DEBIAN
-        echo "Package: SoundscapeSync" > .debpkg/DEBIAN/control
-        echo "Version: 1.0" >> .debpkg/DEBIAN/control
-        echo "Architecture: amd64" >> .debpkg/DEBIAN/control
-        echo "Maintainer: Dominik Polakovics <dominik.polakovics@cloonar.com>" >> .debpkg/DEBIAN/control
-        mkdir -p .debpkg/usr/bin
-        cp fyne-cross/bin/linux-amd64/soundscape-sync .debpkg/usr/bin
-    - name: Create DEB package
-      uses: jiro4989/build-deb-action@v3
-      with:
-        package: SoundscapeSync
-        package_root: .debpkg
-        maintainer: "Dominik Polakovics <dominik.polakovics@cloonar.com>"
-        version: 1.0
-        arch: 'amd64'
-        desc: 'This is my sample package.'
-        depends: 'ffmpeg'
-    - name: get file name
-      run: |
-        mv *.deb soundscapesync-1.0.deb
 
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v3
