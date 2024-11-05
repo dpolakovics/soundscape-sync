@@ -3,6 +3,7 @@ package logic
 import (
   "io"
   "bufio"
+  "fmt"
   "io/ioutil"
   "os/exec"
   "path/filepath"
@@ -21,7 +22,11 @@ func getAudioFiles(folder string) ([]string, error) {
 
     var audioFiles []string
     for _, file := range files {
-        if !file.IsDir() && (strings.HasSuffix(file.Name(), ".mp3") || strings.HasSuffix(file.Name(), ".wav") || strings.HasSuffix(file.Name(), ".m4b")) {
+        if !file.IsDir() && (
+          strings.HasSuffix(file.Name(), ".mp3") ||
+          strings.HasSuffix(file.Name(), ".wav") ||
+          strings.HasSuffix(file.Name(), ".m4b") ||
+          strings.HasSuffix(file.Name(), ".mp4")) {
             audioFiles = append(audioFiles, filepath.Join(folder, file.Name()))
         }
     }
@@ -31,7 +36,35 @@ func getAudioFiles(folder string) ([]string, error) {
 }
 
 func CombineFiles(folder1 string, folder2 string, outputFolder string, progress *widget.ProgressBar) error {
-  return combineStereoFiles(folder1, folder2, outputFolder, progress)
+  ffprobe, err := getFFProbePath()
+  if err != nil {
+      return err
+  }
+  // ffmpeg probe if first audio file in folder 1 has more than 2 channel
+  audioFiles1, err := getAudioFiles(folder1)
+  if err != nil {
+    return err
+  }
+  if len(audioFiles1) == 0 {
+    return fmt.Errorf("no audio files found")
+  }
+  cmd := exec.Command(ffprobe, "-v", "error", "-select_streams", "a:0", "-count_packets", "-show_entries", "stream=channels", "-of", "csv=p=0", audioFiles1[0])
+  out, err := cmd.Output()
+  if err != nil {
+    return err
+  }
+  // out contains a pipe and another space character at the end, so we need to trim it
+  channels, err := strconv.Atoi(strings.TrimSuffix(strings.TrimSpace(string(out)), ","))
+  if err != nil {
+    return err
+  }
+  if channels == 2 {
+    return combineStereoFiles(folder1, folder2, outputFolder, progress)
+  }
+  if channels == 6 {
+    return combineAtmosFiles(folder1, folder2, outputFolder, progress)
+  }
+  return fmt.Errorf("unsupported number of channels: %d", channels)
 }
 
 func getDuration(filename string) (float64, error) {
