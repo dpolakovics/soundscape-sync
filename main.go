@@ -24,7 +24,7 @@ func main() {
     myApp := app.New()
     mainWindow := myApp.NewWindow("Soundscape Sync")
 
-    content := ui.CreateMainContent(mainWindow)
+    content := ui.CreateMainContent(myApp, mainWindow)
     mainWindow.SetContent(content)
 
     checkForUpdates(myApp, mainWindow)
