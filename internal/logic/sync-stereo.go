@@ -38,6 +38,8 @@ func combineStereoFiles(folder1 string, folder2 string, outputFolder string, pro
       }
       
       // Construct FFmpeg command
+      newFileName := outputFolder + "/" + filepath.Base(files2[index])
+      newFileName = newFileName[:len(newFileName)-4] + "_synced.mp3"
       ctx, _ := context.WithCancel(context.Background())
       cmd := exec.CommandContext(ctx, ffmpegPath,
           "-i", file,
@@ -46,7 +48,7 @@ func combineStereoFiles(folder1 string, folder2 string, outputFolder string, pro
           "-progress",
           "pipe:1",
 		      "-map", "[a]",
-          outputFolder + "/" + filepath.Base(files2[index]))
+          newFileName)
       cmd.SysProcAttr = getSysProcAttr()
       stdout, err := cmd.StdoutPipe()
       if err != nil {
