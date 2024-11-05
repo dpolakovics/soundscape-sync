@@ -2,9 +2,8 @@ package ui
 
 import (
     _ "embed"
-    "os/exec"
+    "net/url"
     "path/filepath"
-    "runtime"
 
     "fyne.io/fyne/v2"
     "fyne.io/fyne/v2/container"
@@ -17,7 +16,7 @@ import (
 //go:embed bmc.png
 var bmcPng []byte
 
-func CreateMainContent(window fyne.Window) fyne.CanvasObject {
+func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
     var folder1, folder2, folderOutput string
     // Create folder selection buttons
     folder1Button := widget.NewButton("Select the Folder with the Soundscape", nil)
@@ -101,21 +100,11 @@ func CreateMainContent(window fyne.Window) fyne.CanvasObject {
     
     // Create an image for the Buy Me a Coffee button
     bmcResource := fyne.NewStaticResource("bmc.png", bmcPng)
-
     // Create the Buy Me a Coffee button with an image
     bmcButton := widget.NewButtonWithIcon("Buy me a coffee", bmcResource, func() {
-        var cmd *exec.Cmd
-        if runtime.GOOS == "windows" {
-            cmd = exec.Command("cmd", "/c", "start", "https://www.buymeacoffee.com/razormind") // Change to your actual URL
-        } else if runtime.GOOS == "darwin" {
-            cmd = exec.Command("open", "https://www.buymeacoffee.com/razormind") // Change to your actual URL
-        } else {
-            cmd = exec.Command("xdg-open", "https://www.buymeacoffee.com/razormind") // Change to your actual URL
-        }
-        cmd.Start()
+        u, _ := url.Parse("https://www.buymeacoffee.com/razormind")
+        _ = app.OpenURL(u)
     })
-    // bmcButton.SetMinSize(bmcImage.Size())
-    // bmcButton.Resize(bmcImage.Size())
 
     // Append new text
     newText := "I am an individual developer who has created an app for Soundscape synchronization."
