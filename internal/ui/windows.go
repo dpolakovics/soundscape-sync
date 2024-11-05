@@ -117,14 +117,22 @@ func CreateMainContent(window fyne.Window) fyne.CanvasObject {
     // bmcButton.SetMinSize(bmcImage.Size())
     // bmcButton.Resize(bmcImage.Size())
 
+    // Append new text
+    newText := "I am an individual developer who has created an app for Soundscape synchronization."
+    newText = newText + "\nI hope this app helps you as much as it has helped me."
+    newText = newText + "\nIf you find it useful, please consider buying me a coffee. Thank you!"
+    multiLineEntry := widget.NewMultiLineEntry()
+    multiLineEntry.SetText(newText)
+
     // Create and return the main content
     return container.NewVBox(
         container.NewHBox(folder1Button, folder1Label),
         container.NewHBox(folder2Button, folder2Label),
         container.NewHBox(folderOutputButton, folderOutputLabel),
         startButton,
-        progressBar,
+        multiLineEntry,
         bmcButton,
+        progressBar,
     )
 }
 

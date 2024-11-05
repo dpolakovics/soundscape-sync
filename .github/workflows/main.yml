@@ -7,12 +7,14 @@ on:
     paths-ignore:
       - '**.md'
       - '.github/workflows/release.yml'
+      - 'FUNDING.yml'
   pull_request:
     branches:
       - main
     paths-ignore:
       - '**.md'
       - '.github/workflows/release.yml'
+      - 'FUNDING.yml'
 
 jobs:
   build-linux:
