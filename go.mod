@@ -4,6 +4,7 @@ go 1.22.6
 
 require (
 	fyne.io/fyne/v2 v2.5.2
+	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8
 	github.com/google/go-github/v39 v39.2.0
 )
 

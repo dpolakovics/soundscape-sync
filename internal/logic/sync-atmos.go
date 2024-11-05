@@ -43,6 +43,11 @@ func combineAtmosFiles(folder1 string, folder2 string, outputFolder string, prog
       // Get output file name
       newFileName := outputFolder + "/" + filepath.Base(files2[index])
       newFileName = newFileName[:len(newFileName)-4] + "_synced" + ext
+
+      coverArtString, err := getCoverArtString(file)
+      if err != nil {
+        return err
+      }
       
       // Construct FFmpeg command
       ctx, _ := context.WithCancel(context.Background())
@@ -54,6 +59,7 @@ func combineAtmosFiles(folder1 string, folder2 string, outputFolder string, prog
           "-filter_complex", "[0:a][1:a]amerge=inputs=2,pan=5.1|c0=c0+c6|c1=c1+c7|c2=c2|c3=c3|c4=c4|c5=c5[out]",
           "-map", "[out]",
           "-c:a", "eac3",
+          "-map", coverArtString, "-c:v", "copy", "-disposition:v", "attached_pic",
           "-metadata:s:a:0", "encoder=\"Dolby Digital Plus + Dolby Atmos\"",
           "-progress",
           "pipe:1",

@@ -36,6 +36,11 @@ func combineStereoFiles(folder1 string, folder2 string, outputFolder string, pro
       if err != nil {
           return err
       }
+
+      coverArtString, err := getCoverArtString(file)
+      if err != nil {
+        return err
+      }
       
       // Construct FFmpeg command
       newFileName := outputFolder + "/" + filepath.Base(files2[index])
@@ -45,10 +50,11 @@ func combineStereoFiles(folder1 string, folder2 string, outputFolder string, pro
           "-i", file,
           "-i", files2[index],
           "-filter_complex", "[0:a][1:a]amerge=inputs=2,pan=stereo|c0<c0+c2|c1<c1+c3[a]",
+          "-map", coverArtString, "-c:v", "copy", "-disposition:v", "attached_pic",
           "-progress",
           "pipe:1",
 		      "-map", "[a]",
-          newFileName)
+          outputFolder + "/" + filepath.Base(files2[index]))
       cmd.SysProcAttr = getSysProcAttr()
       stdout, err := cmd.StdoutPipe()
       if err != nil {
@@ -73,4 +79,16 @@ func combineStereoFiles(folder1 string, folder2 string, outputFolder string, pro
     return nil
 }
 
+func getCoverArtFromMp3 (filename string) error {
+    ffmpegPath, err := getFFmpegPath()
+    if err != nil {
+        return err
+    }
 
+    cmd := exec.Command(ffmpegPath, "-i", filename, "cover.jpg")
+    if err := cmd.Run(); err != nil {
+        return err
+    }
+
+    return nil
+}

@@ -5,6 +5,7 @@ import (
   "bufio"
   "fmt"
   "io/ioutil"
+  "os"
   "os/exec"
   "path/filepath"
   "sort"
@@ -12,6 +13,7 @@ import (
   "strings"
 
   "fyne.io/fyne/v2/widget"
+  "github.com/dhowden/tag"
 )
 
 func getAudioFiles(folder string) ([]string, error) {
@@ -92,4 +94,26 @@ func parseProgress(index int, total int, progress *widget.ProgressBar, reader io
             progress.SetValue(progressAmount)
         }
     }
+}
+
+func getCoverArtString(filePath string) (string, error) {
+    // Open the audio file
+    coverArtString := "1:v"
+    f, err := os.Open(filePath)
+    if err != nil {
+        return coverArtString, err
+    }
+    defer f.Close()
+
+    // Use taglib to parse the audio file
+    metadata, err := tag.ReadFrom(f)
+    if err != nil {
+        return coverArtString, err
+    }
+
+    // Check if there is any artwork
+    if metadata.Picture() != nil {
+        coverArtString = "0:v"
+    }
+    return coverArtString, nil
 }
