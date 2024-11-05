@@ -46,7 +46,7 @@ func combineStereoFiles(folder1 string, folder2 string, outputFolder string, pro
           "-progress",
           "pipe:1",
 		      "-map", "[a]",
-          outputFolder + "/" + filepath.Base(file))
+          outputFolder + "/" + filepath.Base(files2[index]))
       cmd.SysProcAttr = getSysProcAttr()
       stdout, err := cmd.StdoutPipe()
       if err != nil {
