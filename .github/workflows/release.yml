@@ -74,7 +74,7 @@ jobs:
         uses: requarks/changelog-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.event.inputs.version }}
+          tag: ${{ github.ref_name }}
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
