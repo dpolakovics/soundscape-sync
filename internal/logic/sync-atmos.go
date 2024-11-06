@@ -38,33 +38,36 @@ func combineAtmosFiles(folder1 string, folder2 string, outputFolder string, prog
       }
 
       // Get extension of file
-      ext := filepath.Ext(file)
+      // ext := filepath.Ext(file)
 
       // Get output file name
       newFileName := outputFolder + "/" + filepath.Base(files2[index])
-      newFileName = newFileName[:len(newFileName)-4] + "_synced" + ext
+      newFileName = newFileName[:len(newFileName)-4] + "_synced.m4v"
 
       // coverArtString, err := getCoverArtString(file)
       // if err != nil {
       //   return err
       // }
+      
 
       // Construct FFmpeg command
       ctx, _ := context.WithCancel(context.Background())
-      // map channel 1 and 2 of file 2 to channel 1 and 2 of file 1 but keep all other channels of file 1
-      // it will be a 6 channel atmos output file
-      cmd := exec.CommandContext(ctx, ffmpegPath,
+      arguments := []string{
           "-i", file,
           "-i", files2[index],
-          "-filter_complex", "[1:a]apad[a2];[0:a][a2]amerge=inputs=2,pan=5.1|c0=c0+c6|c1=c1+c7|c2=c2|c3=c3|c4=c4|c5=c5[out]",
-          "-map", "[out]",
-          "-c:a", "eac3",
-          // "-map", "2:0", "-metadata:s:v", "title=\"Album cover\"", "-metadata:s:v", "comment=\"Cover (front)\"",
-          // "-map", "-map", coverArtString + ":v", "-c:v", "copy", "-disposition:v:1", "attached_pic",
-          "-metadata:s:a:0", "encoder=\"Dolby Digital Plus + Dolby Atmos\"",
-          "-progress",
-          "pipe:1",
-          newFileName)
+          // best audio format so far on ios
+          "-filter_complex", "[1:a]apad[a2];[0:a][a2]amerge=inputs=2[out]",
+          "-c:a", "aac", "-b:a", "654k",
+          // mp4 output
+          // "-filter_complex", "[1:a]apad[a2];[0:a][a2]amerge=inputs=2,pan=5.1|c0=c0+c6|c1=c1+c7|c2=c2|c3=c3|c4=c4|c5=c5[out]",
+          // "-c:a", "eac3", "-ac", "6",
+      }
+      arguments = append(arguments, getBaseArguments()...)
+      arguments = append(arguments, getCoverArtArguments(file, files2[index])...)
+      arguments = append(arguments, newFileName)
+      // map channel 1 and 2 of file 2 to channel 1 and 2 of file 1 but keep all other channels of file 1
+      // it will be a 6 channel atmos output file
+      cmd := exec.CommandContext(ctx, ffmpegPath, arguments...)
       cmd.SysProcAttr = getSysProcAttr()
       stdout, err := cmd.StdoutPipe()
       if err != nil {

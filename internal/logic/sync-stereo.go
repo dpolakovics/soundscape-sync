@@ -37,24 +37,24 @@ func combineStereoFiles(folder1 string, folder2 string, outputFolder string, pro
           return err
       }
 
-      coverArtString, err := getCoverArtString(file)
-      if err != nil {
-        return err
-      }
+      // coverArtString, err := getCoverArtString(file)
+      // if err != nil {
+      //   return err
+      // }
       
       // Construct FFmpeg command
       newFileName := outputFolder + "/" + filepath.Base(files2[index])
       newFileName = newFileName[:len(newFileName)-4] + "_synced.mp3"
       ctx, _ := context.WithCancel(context.Background())
-      cmd := exec.CommandContext(ctx, ffmpegPath,
+      arguments := []string{
           "-i", file,
           "-i", files2[index],
-          "-filter_complex", "[1:a]apad[a2];[0:a][a2]amerge=inputs=2,pan=stereo|c0<c0+c2|c1<c1+c3[a]",
-          "-map", coverArtString + ":v", "-c:v", "copy", "-disposition:v", "attached_pic",
-          "-progress",
-          "pipe:1",
-		      "-map", "[a]",
-          outputFolder + "/" + filepath.Base(files2[index]))
+          "-filter_complex", "[1:a]apad[a2];[0:a][a2]amerge=inputs=2,pan=stereo|c0<c0+c2|c1<c1+c3[out]",
+      }
+      arguments = append(arguments, getBaseArguments()...)
+      arguments = append(arguments, getCoverArtArguments(file, files2[index])...)
+      arguments = append(arguments, newFileName)
+      cmd := exec.CommandContext(ctx, ffmpegPath, arguments...)
       cmd.SysProcAttr = getSysProcAttr()
       stdout, err := cmd.StdoutPipe()
       if err != nil {

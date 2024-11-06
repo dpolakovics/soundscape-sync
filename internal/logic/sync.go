@@ -96,24 +96,43 @@ func parseProgress(index int, total int, progress *widget.ProgressBar, reader io
     }
 }
 
-func getCoverArtString(filePath string) (string, error) {
+func getBaseArguments() []string {
+  return []string{
+    "-map", "[out]",
+    "-progress",
+    "pipe:1",
+    "-map_metadata", "1",
+  }
+}
+
+func getCoverArtArguments(file1 string, file2 string) []string {
+  arguments := []string{}
+  if testCoverArt(file1) {
+    arguments = append(arguments, "-map", "0:v", "-c:v", "copy", "-disposition:v", "attached_pic")
+  }
+  if testCoverArt(file2) {
+    arguments = append(arguments, "-map", "1:v", "-c:v", "copy", "-disposition:v", "attached_pic")
+  }
+  return arguments
+}
+
+func testCoverArt(filePath string) bool {
     // Open the audio file
-    coverArtString := "1"
     f, err := os.Open(filePath)
     if err != nil {
-        return coverArtString, err
+        return false
     }
     defer f.Close()
 
     // Use taglib to parse the audio file
     metadata, err := tag.ReadFrom(f)
     if err != nil {
-        return coverArtString, err
+      return false
     }
 
     // Check if there is any artwork
     if metadata.Picture() != nil {
-        coverArtString = "0"
+      return true
     }
-    return coverArtString, nil
+    return false
 }
