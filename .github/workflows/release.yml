@@ -69,6 +69,12 @@ jobs:
     # needs: [build-linux, build-windows, build-mac]
     needs: [build-windows, build-linux]
     steps:
+      - name: Generate Changelog
+        id: changelog
+        uses: requarks/changelog-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.event.inputs.version }}
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -77,6 +83,7 @@ jobs:
         with:
           tag_name: ${{ github.event.inputs.version }}  # Tag name from the push event
           release_name: Release ${{ github.event.inputs.version }}  # Name of the release
+          body: ${{ steps.changelog.outputs.changes }}
           draft: false  # Set to true if you want to create a draft release
           prerelease: true  # Set to true if this is a prerelease
 
