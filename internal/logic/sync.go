@@ -3,6 +3,7 @@ package logic
 import (
   "io"
   "bufio"
+  "context"
   "fmt"
   "io/ioutil"
   "os"
@@ -38,35 +39,101 @@ func getAudioFiles(folder string) ([]string, error) {
 }
 
 func CombineFiles(folder1 string, folder2 string, outputFolder string, progress *widget.ProgressBar) error {
-  ffprobe, err := getFFProbePath()
-  if err != nil {
-      return err
-  }
-  // ffmpeg probe if first audio file in folder 1 has more than 2 channel
-  audioFiles1, err := getAudioFiles(folder1)
-  if err != nil {
-    return err
-  }
-  if len(audioFiles1) == 0 {
-    return fmt.Errorf("no audio files found")
-  }
-  cmd := exec.Command(ffprobe, "-v", "error", "-select_streams", "a:0", "-count_packets", "-show_entries", "stream=channels", "-of", "csv=p=0", audioFiles1[0])
-  out, err := cmd.Output()
-  if err != nil {
-    return err
-  }
-  // out contains a pipe and another space character at the end, so we need to trim it
-  channels, err := strconv.Atoi(strings.TrimSuffix(strings.TrimSpace(string(out)), ","))
-  if err != nil {
-    return err
-  }
-  if channels == 2 {
-    return combineStereoFiles(folder1, folder2, outputFolder, progress)
-  }
-  if channels == 6 {
-    return combineAtmosFiles(folder1, folder2, outputFolder, progress)
-  }
-  return fmt.Errorf("Currently only stereo and 5.1 Soundscapes are supported", channels)
+    // Get list of audio files from both folders
+    files1, err := getAudioFiles(folder1)
+    if err != nil {
+        return err
+    }
+    files2, err := getAudioFiles(folder2)
+    if err != nil {
+        return err
+    }
+
+    if len(files1) != len(files2) {
+        return fmt.Errorf("the number of audio files in the two folders must be the same")
+    }
+
+    ffmpeg, err := getFFmpegPath()
+    if err != nil {
+        return err
+    }
+
+    total := len(files1)
+
+    for index, file := range files1 {
+        channel , err := getChannelAmount(file)
+        if err != nil {
+            return err
+        }
+        duration, err := getDuration(file)
+        if err != nil {
+            return err
+        }
+
+        channelArguments, err := getChannelArguments(channel)
+        if err != nil {
+            return err
+        }
+        
+        // Get output file name
+        ext := filepath.Ext(file)
+        newFileName := outputFolder + "/" + filepath.Base(files2[index])
+        newFileName = newFileName[:len(newFileName)-4] + "_synced" + ext
+
+        // Construct FFmpeg command
+        ctx, _ := context.WithCancel(context.Background())
+        arguments := []string{
+            "-i", file,
+            "-i", files2[index],
+        }
+        arguments = append(arguments, channelArguments...)
+        arguments = append(arguments, getBaseArguments()...)
+        arguments = append(arguments, getCoverArtArguments(file, files2[index])...)
+        arguments = append(arguments, newFileName)
+        cmd := exec.CommandContext(ctx, ffmpeg, arguments...)
+        cmd.SysProcAttr = getSysProcAttr()
+        stdout, err := cmd.StdoutPipe()
+        if err != nil {
+          // prepend error with text
+          err = fmt.Errorf("error creating ffmpeg command: %w", err)
+          return err
+        }
+
+        // Execute FFmpeg command
+        if err := cmd.Start(); err != nil {
+            err = fmt.Errorf("error at ffmpeg command start: %w", err)
+            return err
+        }
+
+        parseProgress(index, total, progress, stdout, duration)
+
+        if err := cmd.Wait(); err != nil {
+            err = fmt.Errorf("error at ffmpeg command wait: %w", err)
+            return err
+        }
+    }
+
+    cleanupTemp()
+
+    return nil
+}
+
+func getChannelAmount(file string) (int, error) {
+    ffprobe, err := getFFProbePath()
+    if err != nil {
+        return 0, err
+    }
+
+    cmd := exec.Command(ffprobe, "-v", "error", "-select_streams", "a:0", "-count_packets", "-show_entries", "stream=channels", "-of", "csv=p=0", file)
+    out, err := cmd.Output()
+    if err != nil {
+        return 0, err
+    }
+    channels, err := strconv.Atoi(strings.TrimSuffix(strings.TrimSpace(string(out)), ","))
+    if err != nil {
+        return 0, err
+    }
+    return channels, nil
 }
 
 func getDuration(filename string) (float64, error) {
@@ -103,6 +170,18 @@ func getBaseArguments() []string {
     "pipe:1",
     "-map_metadata", "1",
   }
+}
+
+func getChannelArguments(channels int) ([]string, error) {
+  switch channels {
+    case 2:
+      return getStereoArguments(), nil
+    case 6:
+      return get5_1Arguments(), nil
+    case 12:
+      return get7_1_4Arguments(), nil
+  }
+  return nil, fmt.Errorf("Currently only stereo, 5.1 and 7.1.4 Soundscapes are supported")
 }
 
 func getCoverArtArguments(file1 string, file2 string) []string {
