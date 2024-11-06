@@ -1,11 +1,9 @@
 name: Manual Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Release version'
-        required: true
+  push:
+    tags:
+      - 'v*.*'  # Adjust this pattern based on your tagging
 
 permissions:
   contents: write
@@ -81,8 +79,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub token for authentication
         with:
-          tag_name: ${{ github.event.inputs.version }}  # Tag name from the push event
-          release_name: Release ${{ github.event.inputs.version }}  # Name of the release
+          tag_name: ${{ github.ref_name }}  # Tag name from the push event
+          release_name: Release ${{ github.ref_name }}  # Name of the release
           body: ${{ steps.changelog.outputs.changes }}
           draft: false  # Set to true if you want to create a draft release
           prerelease: true  # Set to true if this is a prerelease
