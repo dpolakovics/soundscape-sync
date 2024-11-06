@@ -98,7 +98,7 @@ func parseProgress(index int, total int, progress *widget.ProgressBar, reader io
 
 func getCoverArtString(filePath string) (string, error) {
     // Open the audio file
-    coverArtString := "1:v"
+    coverArtString := "1"
     f, err := os.Open(filePath)
     if err != nil {
         return coverArtString, err
@@ -113,7 +113,7 @@ func getCoverArtString(filePath string) (string, error) {
 
     // Check if there is any artwork
     if metadata.Picture() != nil {
-        coverArtString = "0:v"
+        coverArtString = "0"
     }
     return coverArtString, nil
 }

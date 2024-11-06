@@ -44,11 +44,11 @@ func combineAtmosFiles(folder1 string, folder2 string, outputFolder string, prog
       newFileName := outputFolder + "/" + filepath.Base(files2[index])
       newFileName = newFileName[:len(newFileName)-4] + "_synced" + ext
 
-      coverArtString, err := getCoverArtString(file)
-      if err != nil {
-        return err
-      }
-      
+      // coverArtString, err := getCoverArtString(file)
+      // if err != nil {
+      //   return err
+      // }
+
       // Construct FFmpeg command
       ctx, _ := context.WithCancel(context.Background())
       // map channel 1 and 2 of file 2 to channel 1 and 2 of file 1 but keep all other channels of file 1
@@ -56,10 +56,11 @@ func combineAtmosFiles(folder1 string, folder2 string, outputFolder string, prog
       cmd := exec.CommandContext(ctx, ffmpegPath,
           "-i", file,
           "-i", files2[index],
-          "-filter_complex", "[0:a][1:a]amerge=inputs=2,pan=5.1|c0=c0+c6|c1=c1+c7|c2=c2|c3=c3|c4=c4|c5=c5[out]",
+          "-filter_complex", "[1:a]apad[a2];[0:a][a2]amerge=inputs=2,pan=5.1|c0=c0+c6|c1=c1+c7|c2=c2|c3=c3|c4=c4|c5=c5[out]",
           "-map", "[out]",
           "-c:a", "eac3",
-          "-map", coverArtString, "-c:v", "copy", "-disposition:v", "attached_pic",
+          // "-map", "2:0", "-metadata:s:v", "title=\"Album cover\"", "-metadata:s:v", "comment=\"Cover (front)\"",
+          // "-map", "-map", coverArtString + ":v", "-c:v", "copy", "-disposition:v:1", "attached_pic",
           "-metadata:s:a:0", "encoder=\"Dolby Digital Plus + Dolby Atmos\"",
           "-progress",
           "pipe:1",
