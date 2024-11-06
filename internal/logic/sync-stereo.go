@@ -38,8 +38,9 @@ func combineStereoFiles(folder1 string, folder2 string, outputFolder string, pro
       }
 
       // Construct FFmpeg command
+      ext := filepath.Ext(files2[index])
       newFileName := outputFolder + "/" + filepath.Base(files2[index])
-      newFileName = newFileName[:len(newFileName)-4] + "_synced.mp3"
+      newFileName = newFileName[:len(newFileName)-4] + "_synced" + ext
       ctx, _ := context.WithCancel(context.Background())
       arguments := []string{
           "-i", file,
