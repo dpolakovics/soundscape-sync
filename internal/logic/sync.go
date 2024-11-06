@@ -66,7 +66,7 @@ func CombineFiles(folder1 string, folder2 string, outputFolder string, progress 
   if channels == 6 {
     return combineAtmosFiles(folder1, folder2, outputFolder, progress)
   }
-  return fmt.Errorf("unsupported number of channels: %d", channels)
+  return fmt.Errorf("Currently only stereo and 5.1 Soundscapes are supported", channels)
 }
 
 func getDuration(filename string) (float64, error) {
