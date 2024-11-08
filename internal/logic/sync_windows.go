@@ -1,5 +1,7 @@
 //go:build windows
 
+package logic
+
 import (
   "syscall"
 )
