@@ -12,7 +12,6 @@ import (
   "sort"
   "strconv"
   "strings"
-  "syscall"
 
   "fyne.io/fyne/v2/widget"
   "github.com/dhowden/tag"
@@ -39,10 +38,6 @@ func getAudioFiles(folder string) ([]string, error) {
 
     sort.Strings(audioFiles)
     return audioFiles, nil
-}
-
-func getSysProcAttr() *syscall.SysProcAttr {
-  return &syscall.SysProcAttr{}
 }
 
 func CombineFiles(folder1 string, folder2 string, outputFolder string, progress *widget.ProgressBar) error {

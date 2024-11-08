@@ -7,5 +7,5 @@ import (
 )
 
 func getSysProcAttr() *syscall.SysProcAttr {
-  return &syscall.SysProcAttr{Hidewindow: true}
+  return &syscall.SysProcAttr{HideWindow: true}
 }
