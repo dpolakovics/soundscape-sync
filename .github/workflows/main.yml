@@ -1,5 +1,6 @@
 name: Cross-compile with fyne-cross
 
+
 on:
   push:
     branches:
