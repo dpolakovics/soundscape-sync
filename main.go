@@ -3,7 +3,7 @@ package main
 import (
     "context"
     "net/url"
-    "soundscape-sync/internal/ui"
+    "github.com/dpolakovics/soundscape-sync/internal/ui"
 
     "fyne.io/fyne/v2"
     "fyne.io/fyne/v2/app"

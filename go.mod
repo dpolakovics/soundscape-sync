@@ -1,4 +1,4 @@
-module soundscape-sync
+module github.com/dpolakovics/soundscape-sync
 
 go 1.22.6
 
@@ -6,6 +6,10 @@ require (
 	fyne.io/fyne/v2 v2.5.2
 	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8
 	github.com/google/go-github/v39 v39.2.0
+	github.com/soundscape-sync/ffstatic-darwin-amd64 v0.0.0-20241108144634-13b0016ea821
+	github.com/soundscape-sync/ffstatic-darwin-arm64 v0.0.0-20241108144544-80e70e6712ee
+	github.com/soundscape-sync/ffstatic-linux-amd64 v0.0.0-20241108144957-cbbbc71bd09a
+	github.com/soundscape-sync/ffstatic-windows-amd64 v0.0.0-20241108145053-553d2cb8d22c
 )
 
 require (

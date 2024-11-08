@@ -12,9 +12,12 @@ import (
   "sort"
   "strconv"
   "strings"
+  "syscall"
 
   "fyne.io/fyne/v2/widget"
   "github.com/dhowden/tag"
+
+  ff "github.com/dpolakovics/soundscape-sync/internal/ffmpeg"
 )
 
 func getAudioFiles(folder string) ([]string, error) {
@@ -38,6 +41,10 @@ func getAudioFiles(folder string) ([]string, error) {
     return audioFiles, nil
 }
 
+func getSysProcAttr() *syscall.SysProcAttr {
+  return &syscall.SysProcAttr{}
+}
+
 func CombineFiles(folder1 string, folder2 string, outputFolder string, progress *widget.ProgressBar) error {
     // Get list of audio files from both folders
     files1, err := getAudioFiles(folder1)
@@ -53,10 +60,7 @@ func CombineFiles(folder1 string, folder2 string, outputFolder string, progress 
         return fmt.Errorf("the number of audio files in the two folders must be the same")
     }
 
-    ffmpeg, err := getFFmpegPath()
-    if err != nil {
-        return err
-    }
+    ffmpeg := ff.FFmpegPath()
 
     total := len(files1)
 
@@ -113,16 +117,11 @@ func CombineFiles(folder1 string, folder2 string, outputFolder string, progress 
         }
     }
 
-    cleanupTemp()
-
     return nil
 }
 
 func getChannelAmount(file string) (int, error) {
-    ffprobe, err := getFFProbePath()
-    if err != nil {
-        return 0, err
-    }
+    ffprobe := ff.FFprobePath()
 
     cmd := exec.Command(ffprobe, "-v", "error", "-select_streams", "a:0", "-count_packets", "-show_entries", "stream=channels", "-of", "csv=p=0", file)
     out, err := cmd.Output()
@@ -137,10 +136,7 @@ func getChannelAmount(file string) (int, error) {
 }
 
 func getDuration(filename string) (float64, error) {
-    ffprobe, err := getFFProbePath()
-    if err != nil {
-        return 0, err
-    }
+    ffprobe := ff.FFprobePath()
 
     cmd := exec.Command(ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", filename)
     out, err := cmd.Output()

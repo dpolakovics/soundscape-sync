@@ -10,7 +10,7 @@ import (
     "fyne.io/fyne/v2/dialog"
     "fyne.io/fyne/v2/widget"
 
-    "soundscape-sync/internal/logic"
+    "github.com/dpolakovics/soundscape-sync/internal/logic"
 )
 
 //go:embed bmc.png
