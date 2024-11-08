@@ -29,6 +29,11 @@ jobs:
       run: go install github.com/fyne-io/fyne-cross@latest
     - name: Cross-compile for Linux
       run: fyne-cross linux
+    - name: Upload Linux artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-build
+        path: fyne-cross/bin/linux-amd64
 
   build-windows:
     runs-on: ubuntu-latest
@@ -42,6 +47,11 @@ jobs:
       run: go install github.com/fyne-io/fyne-cross@latest
     - name: Cross-compile for Windows
       run: fyne-cross windows
+    - name: Upload Windows artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build
+        path: fyne-cross/bin/windows-amd64
 
   build-mac:
     runs-on: macos-latest
@@ -51,7 +61,31 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: 1.22
-    - name: Install fyne
-      run: go install fyne.io/fyne/v2/cmd/fyne@latest
-    - name: Build Fyne application for macOS
-      run: fyne package -os darwin -icon Icon.png
+    - name: Compile for MacOS
+      run: |
+        GOOS=darwin GOARCH=arm64 go build -o SoundscapeSync_arm64
+        CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -o SoundscapeSync_amd64
+        lipo -create -output SoundscapeSync SoundscapeSync_amd64 SoundscapeSync_arm64
+        mkdir -p SoundscapeSync.app/Contents/MacOS
+        mv SoundscapeSync SoundscapeSync.app/Contents/MacOS/SoundscapeSync
+        echo '<?xml version="1.0" encoding="UTF-8"?>' > SoundscapeSync.app/Contents/Info.plist
+        echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' >> SoundscapeSync.app/Contents/Info.plist
+        echo '<plist version="1.0">' >> SoundscapeSync.app/Contents/Info.plist
+        echo '<dict>' >> SoundscapeSync.app/Contents/Info.plist
+        echo '  <key>CFBundleName</key>' >> SoundscapeSync.app/Contents/Info.plist
+        echo '  <string>SoundscapeSync</string>' >> SoundscapeSync.app/Contents/Info.plist
+        echo '  <key>CFBundleVersion</key>' >> SoundscapeSync.app/Contents/Info.plist
+        echo '  <string>1.0</string>' >> SoundscapeSync.app/Contents/Info.plist
+        echo '  <key>CFBundleIdentifier</key>' >> SoundscapeSync.app/Contents/Info.plist
+        echo '  <string>com.cloonar.soundscape-sync</string>' >> SoundscapeSync.app/Contents/Info.plist
+        echo '  <key>Executable</key>' >> SoundscapeSync.app/Contents/Info.plist
+        echo '  <string>SoundscapeSync</string>' >> SoundscapeSync.app/Contents/Info.plist
+        echo '</dict>' >> SoundscapeSync.app/Contents/Info.plist
+        echo '</plist>' >> SoundscapeSync.app/Contents/Info.plist
+        chmod +x SoundscapeSync.app/Contents/MacOS/SoundscapeSync
+        zip -r SoundscapeSync.app.zip SoundscapeSync.app
+    - name: Upload macOS artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-build
+        path: SoundscapeSync.app.zip
