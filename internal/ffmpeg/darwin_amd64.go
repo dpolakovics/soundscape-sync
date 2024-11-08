@@ -1,9 +1,9 @@
-//go:build windows && amd64
+//go:build darwin && amd64
 
 package ffmpeg
 
 import (
-  ff "github.com/soundscape-sync/ffstatic-windows-amd64"
+  ff "github.com/soundscape-sync/ffstatic-darwin-amd64"
 )
 
 func FFmpegPath() string { return ff.FFmpegPath() }
