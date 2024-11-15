@@ -82,12 +82,19 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
         }, fyne.CurrentApp().Driver().AllWindows()[0])
     }
 
+    // Volume slider
+    volumeSliderValueLabel := widget.NewLabel("Adjust Soundscape volume")
+    // Create the slider
+    volumeSlider := widget.NewSlider(0, 100)
+    volumeSlider.Step = 1
+    volumeSlider.Value = 100
+
     // Set up start button action
     startButton.OnTapped = func() {
         startButton.Disable()
         progressBar.Show()
         go func() {
-            err := logic.CombineFiles(folder1, folder2, folderOutput, progressBar)
+            err := logic.CombineFiles(folder1, folder2, folderOutput, progressBar, volumeSlider.Value)
             if err != nil {
                 dialog.ShowError(err, window)
             } else {
@@ -118,6 +125,8 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
         container.NewHBox(folder1Button, folder1Label),
         container.NewHBox(folder2Button, folder2Label),
         container.NewHBox(folderOutputButton, folderOutputLabel),
+        volumeSliderValueLabel,
+        volumeSlider,
         startButton,
         multiLineEntry,
         bmcButton,
