@@ -87,7 +87,9 @@ func CombineFiles(folder1 string, folder2 string, outputFolder string, progress 
         }
         arguments = append(arguments, channelArguments...)
         arguments = append(arguments, getBaseArguments()...)
-        arguments = append(arguments, getCoverArtArguments(file, files2[index])...)
+        if ext == ".mp3" || ext == ".flac" {
+          arguments = append(arguments, getCoverArtArguments(file, files2[index])...)
+        }
         arguments = append(arguments, newFileName)
         cmd := exec.CommandContext(ctx, ffmpeg, arguments...)
         cmd.SysProcAttr = getSysProcAttr()
@@ -169,10 +171,12 @@ func getChannelArguments(channels int) ([]string, error) {
       return getStereoArguments(), nil
     case 6:
       return get5_1Arguments(), nil
+    case 10:
+      return get7_1_2Arguments(), nil
     case 12:
       return get7_1_4Arguments(), nil
   }
-  return nil, fmt.Errorf("Currently only stereo, 5.1 and 7.1.4 Soundscapes are supported")
+  return nil, fmt.Errorf("Currently only stereo, 5.1, 7.1.2 and 7.1.4 Soundscapes are supported")
 }
 
 func getCoverArtArguments(file1 string, file2 string) []string {
