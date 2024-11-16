@@ -169,10 +169,12 @@ func getChannelArguments(channels int) ([]string, error) {
       return getStereoArguments(), nil
     case 6:
       return get5_1Arguments(), nil
+    case 10:
+      return get7_1_2Arguments(), nil
     case 12:
       return get7_1_4Arguments(), nil
   }
-  return nil, fmt.Errorf("Currently only stereo, 5.1 and 7.1.4 Soundscapes are supported")
+  return nil, fmt.Errorf("Currently only stereo, 5.1, 7.1.2 and 7.1.4 Soundscapes are supported")
 }
 
 func getCoverArtArguments(file1 string, file2 string) []string {
