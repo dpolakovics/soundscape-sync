@@ -87,7 +87,9 @@ func CombineFiles(folder1 string, folder2 string, outputFolder string, progress 
         }
         arguments = append(arguments, channelArguments...)
         arguments = append(arguments, getBaseArguments()...)
-        arguments = append(arguments, getCoverArtArguments(file, files2[index])...)
+        if ext == ".mp3" || ext == ".flac" {
+          arguments = append(arguments, getCoverArtArguments(file, files2[index])...)
+        }
         arguments = append(arguments, newFileName)
         cmd := exec.CommandContext(ctx, ffmpeg, arguments...)
         cmd.SysProcAttr = getSysProcAttr()
