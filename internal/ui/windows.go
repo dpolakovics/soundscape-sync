@@ -3,7 +3,10 @@ package ui
 import (
     _ "embed"
     "net/url"
+    "os/exec"
     "path/filepath"
+    "runtime"
+    "strings"
 
     "fyne.io/fyne/v2"
     "fyne.io/fyne/v2/container"
@@ -15,6 +18,95 @@ import (
 
 //go:embed bmc.png
 var bmcPng []byte
+
+// tryLinuxNativeFolderDialog attempts to open a native OS folder selection dialog on Linux.
+// It first tries zenity (common on GNOME), then kdialog (common on KDE).
+// If neither works, it returns an empty string.
+func tryLinuxNativeFolderDialog() string {
+    // Try zenity first
+    cmd := exec.Command("zenity", "--file-selection", "--directory")
+    out, err := cmd.Output()
+    if err == nil {
+        folderPath := strings.TrimSpace(string(out))
+        if folderPath != "" {
+            return folderPath
+        }
+    }
+
+    // If zenity fails, try kdialog
+    cmd = exec.Command("kdialog", "--getexistingdirectory", "$HOME")
+    out, err = cmd.Output()
+    if err == nil {
+        folderPath := strings.TrimSpace(string(out))
+        if folderPath != "" {
+            return folderPath
+        }
+    }
+
+    // If both fail, return empty string
+    return ""
+}
+
+// tryNativeFolderDialog attempts to open a native OS folder selection dialog.
+// If successful, it returns the selected path. If not available or fails, it returns an empty string.
+func tryNativeFolderDialog() string {
+    switch runtime.GOOS {
+    case "windows":
+        // Use PowerShell to prompt for a folder
+        cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command",
+            "[System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms') | Out-Null; "+
+                "$f = New-Object System.Windows.Forms.FolderBrowserDialog; "+
+                "if($f.ShowDialog() -eq 'OK'){ $f.SelectedPath }")
+        out, err := cmd.Output()
+        if err == nil {
+            folderPath := strings.TrimSpace(string(out))
+            if folderPath != "" {
+                return folderPath
+            }
+        }
+        return ""
+
+    case "darwin":
+        // On macOS, use AppleScript to choose a folder
+        cmd := exec.Command("osascript", "-e", `tell application "System Events" to activate`, "-e", `POSIX path of (choose folder)`)
+        out, err := cmd.Output()
+        if err == nil {
+            folderPath := strings.TrimSpace(string(out))
+            if folderPath != "" {
+                return folderPath
+            }
+        }
+        return ""
+
+    case "linux":
+        return tryLinuxNativeFolderDialog()
+
+    default:
+        return ""
+    }
+}
+
+// showFolderSelection attempts to show a native file dialog first. If it fails, fallback to Fyne's dialog.
+func showFolderSelection(win fyne.Window, callback func(string)) {
+    // Try native first
+    nativePath := tryNativeFolderDialog()
+    if nativePath != "" {
+        callback(nativePath)
+        return
+    }
+
+    // Fallback to Fyne dialog if native is not available
+    dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
+        if err != nil {
+            dialog.ShowError(err, win)
+            return
+        }
+        if uri == nil {
+            return
+        }
+        callback(uri.Path())
+    }, win)
+}
 
 func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
     var folder1, folder2, folderOutput string
@@ -36,50 +128,29 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
     progressBar := widget.NewProgressBar()
     progressBar.Hide() // Hide initially
 
-    // Set up folder selection dialogs
+    // Set up folder selection actions with fallback logic
     folder1Button.OnTapped = func() {
-        dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
-            if err != nil {
-                dialog.ShowError(err, fyne.CurrentApp().Driver().AllWindows()[0])
-                return
-            }
-            if uri == nil {
-                return
-            }
-            folder1 = uri.Path()
-            folder1Label.SetText(filepath.Base(uri.Path()))
+        showFolderSelection(window, func(path string) {
+            folder1 = path
+            folder1Label.SetText(filepath.Base(path))
             updateStartButton(folder1Label, folder2Label, folderOutputLabel, startButton)
-        }, fyne.CurrentApp().Driver().AllWindows()[0])
+        })
     }
 
     folder2Button.OnTapped = func() {
-        dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
-            if err != nil {
-                dialog.ShowError(err, fyne.CurrentApp().Driver().AllWindows()[0])
-                return
-            }
-            if uri == nil {
-                return
-            }
-            folder2 = uri.Path()
-            folder2Label.SetText(filepath.Base(uri.Path()))
+        showFolderSelection(window, func(path string) {
+            folder2 = path
+            folder2Label.SetText(filepath.Base(path))
             updateStartButton(folder1Label, folder2Label, folderOutputLabel, startButton)
-        }, fyne.CurrentApp().Driver().AllWindows()[0])
+        })
     }
 
     folderOutputButton.OnTapped = func() {
-        dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
-            if err != nil {
-                dialog.ShowError(err, fyne.CurrentApp().Driver().AllWindows()[0])
-                return
-            }
-            if uri == nil {
-                return
-            }
-            folderOutput = uri.Path()
-            folderOutputLabel.SetText(filepath.Base(uri.Path()))
+        showFolderSelection(window, func(path string) {
+            folderOutput = path
+            folderOutputLabel.SetText(filepath.Base(path))
             updateStartButton(folder1Label, folder2Label, folderOutputLabel, startButton)
-        }, fyne.CurrentApp().Driver().AllWindows()[0])
+        })
     }
 
     // Volume slider
@@ -104,7 +175,7 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
             startButton.Enable()
         }()
     }
-    
+
     // Create an image for the Buy Me a Coffee button
     bmcResource := fyne.NewStaticResource("bmc.png", bmcPng)
     // Create the Buy Me a Coffee button with an image
