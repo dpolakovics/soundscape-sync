@@ -49,14 +49,18 @@ func tryLinuxNativeFolderDialog() string {
 
 // tryNativeFolderDialog attempts to open a native OS folder selection dialog.
 // If successful, it returns the selected path. If not available or fails, it returns an empty string.
+// On Windows, use an OpenFileDialog trick to simulate a normal file browser dialog rather than the older folder dialog.
 func tryNativeFolderDialog() string {
     switch runtime.GOOS {
     case "windows":
-        // Use PowerShell to prompt for a folder
+        // Use PowerShell to prompt with an OpenFileDialog that can simulate folder selection
         cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command",
             "[System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms') | Out-Null; "+
-                "$f = New-Object System.Windows.Forms.FolderBrowserDialog; "+
-                "if($f.ShowDialog() -eq 'OK'){ $f.SelectedPath }")
+                "$ofd = New-Object System.Windows.Forms.OpenFileDialog; "+
+                "$ofd.InitialDirectory = [Environment]::GetFolderPath('MyDocuments'); "+
+                "$ofd.ValidateNames = $true; $ofd.CheckFileExists = $false; $ofd.CheckPathExists = $true; "+
+                "$ofd.FileName = 'Folder Selection.'; "+
+                "if ($ofd.ShowDialog() -eq 'OK') { Split-Path $ofd.FileName }")
         out, err := cmd.Output()
         if err == nil {
             folderPath := strings.TrimSpace(string(out))

@@ -2,3 +2,5 @@ project_name: "soundscape-sync"
 default_prompt_blocks:
   - "basic-prompt"
   - "go-development"
+initial_files:
+  - "README.md"
