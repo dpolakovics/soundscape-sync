@@ -6,5 +6,7 @@ package ui
 import "syscall"
 
 func getSysProcAttr() *syscall.SysProcAttr {
-    return &syscall.SysProcAttr{HideWindow: true}
+    return &syscall.SysProcAttr{
+        CreationFlags: syscall.CREATE_NO_WINDOW,
+    }
 }

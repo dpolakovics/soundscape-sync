@@ -23,7 +23,6 @@ var bmcPng []byte
 // It first tries zenity (common on GNOME), then kdialog (common on KDE).
 // If neither works, it returns an empty string.
 func tryLinuxNativeFolderDialog() string {
-    // Try zenity first
     cmd := exec.Command("zenity", "--file-selection", "--directory")
     out, err := cmd.Output()
     if err == nil {
@@ -33,7 +32,6 @@ func tryLinuxNativeFolderDialog() string {
         }
     }
 
-    // If zenity fails, try kdialog
     cmd = exec.Command("kdialog", "--getexistingdirectory", "$HOME")
     out, err = cmd.Output()
     if err == nil {
@@ -43,17 +41,14 @@ func tryLinuxNativeFolderDialog() string {
         }
     }
 
-    // If both fail, return empty string
     return ""
 }
 
 // tryNativeFolderDialog attempts to open a native OS folder selection dialog.
-// If successful, it returns the selected path. If not available or fails, it returns an empty string.
-// On Windows, use an OpenFileDialog trick to simulate a folder selection with no visible cmd window.
 func tryNativeFolderDialog() string {
     switch runtime.GOOS {
     case "windows":
-        cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command",
+        cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command",
             "[System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms') | Out-Null; "+
                 "$ofd = New-Object System.Windows.Forms.OpenFileDialog; "+
                 "$ofd.InitialDirectory = [Environment]::GetFolderPath('MyDocuments'); "+
@@ -75,7 +70,6 @@ func tryNativeFolderDialog() string {
         return ""
 
     case "darwin":
-        // On macOS, use AppleScript to choose a folder
         cmd := exec.Command("osascript", "-e", `tell application "System Events" to activate`, "-e", `POSIX path of (choose folder)`)
         out, err := cmd.Output()
         if err == nil {
@@ -96,14 +90,12 @@ func tryNativeFolderDialog() string {
 
 // showFolderSelection attempts to show a native file dialog first. If it fails, fallback to Fyne's dialog.
 func showFolderSelection(win fyne.Window, callback func(string)) {
-    // Try native first
     nativePath := tryNativeFolderDialog()
     if nativePath != "" {
         callback(nativePath)
         return
     }
 
-    // Fallback to Fyne dialog if native is not available
     dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
         if err != nil {
             dialog.ShowError(err, win)
@@ -118,25 +110,21 @@ func showFolderSelection(win fyne.Window, callback func(string)) {
 
 func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
     var folder1, folder2, folderOutput string
-    // Create folder selection buttons
+
     folder1Button := widget.NewButton("Select the Folder with the Soundscape", nil)
     folder2Button := widget.NewButton("Select the Folder with the Audiobook", nil)
     folderOutputButton := widget.NewButton("Select the output Folder", nil)
 
-    // Create labels to display selected folders
     folder1Label := widget.NewLabel("No folder selected")
     folder2Label := widget.NewLabel("No folder selected")
     folderOutputLabel := widget.NewLabel("No folder selected")
 
-    // Create start button
     startButton := widget.NewButton("Start Sync", nil)
-    startButton.Disable() // Disable initially
+    startButton.Disable()
 
-    // Create progress bar
     progressBar := widget.NewProgressBar()
-    progressBar.Hide() // Hide initially
+    progressBar.Hide()
 
-    // Set up folder selection actions with fallback logic
     folder1Button.OnTapped = func() {
         showFolderSelection(window, func(path string) {
             folder1 = path
@@ -161,14 +149,11 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
         })
     }
 
-    // Volume slider
     volumeSliderValueLabel := widget.NewLabel("Adjust Soundscape volume")
-    // Create the slider
     volumeSlider := widget.NewSlider(0, 100)
     volumeSlider.Step = 1
     volumeSlider.Value = 100
 
-    // Set up start button action
     startButton.OnTapped = func() {
         startButton.Disable()
         progressBar.Show()
@@ -184,22 +169,18 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
         }()
     }
 
-    // Create an image for the Buy Me a Coffee button
     bmcResource := fyne.NewStaticResource("bmc.png", bmcPng)
-    // Create the Buy Me a Coffee button with an image
     bmcButton := widget.NewButtonWithIcon("Buy me a coffee", bmcResource, func() {
         u, _ := url.Parse("https://www.buymeacoffee.com/razormind")
         _ = app.OpenURL(u)
     })
 
-    // Append new text
     newText := "I am an individual developer who has created an app for Soundscape synchronization."
-    newText = newText + "\nI hope this app helps you as much as it has helped me."
-    newText = newText + "\nIf you find it useful, please consider buying me a coffee. Thank you!"
+    newText += "\nI hope this app helps you as much as it has helped me."
+    newText += "\nIf you find it useful, please consider buying me a coffee. Thank you!"
     multiLineEntry := widget.NewMultiLineEntry()
     multiLineEntry.SetText(newText)
 
-    // Create and return the main content
     return container.NewVBox(
         container.NewHBox(folder1Button, folder1Label),
         container.NewHBox(folder2Button, folder2Label),
