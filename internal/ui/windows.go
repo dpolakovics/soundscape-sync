@@ -20,8 +20,6 @@ import (
 var bmcPng []byte
 
 // tryLinuxNativeFolderDialog attempts to open a native OS folder selection dialog on Linux.
-// It first tries zenity (common on GNOME), then kdialog (common on KDE).
-// If neither works, it returns an empty string.
 func tryLinuxNativeFolderDialog() string {
     cmd := exec.Command("zenity", "--file-selection", "--directory")
     out, err := cmd.Output()
@@ -56,6 +54,7 @@ func tryNativeFolderDialog() string {
                 "$ofd.FileName = 'Folder Selection.'; "+
                 "if ($ofd.ShowDialog() -eq 'OK') { Split-Path $ofd.FileName }")
 
+        // Set SysProcAttr for Windows to hide window
         if runtime.GOOS == "windows" {
             cmd.SysProcAttr = getSysProcAttr()
         }

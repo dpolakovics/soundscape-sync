@@ -3,10 +3,14 @@
 
 package ui
 
-import "syscall"
+import (
+    "syscall"
+)
+
+const CREATE_NO_WINDOW = 0x08000000
 
 func getSysProcAttr() *syscall.SysProcAttr {
     return &syscall.SysProcAttr{
-        CreationFlags: syscall.CREATE_NO_WINDOW,
+        CreationFlags: CREATE_NO_WINDOW,
     }
 }
