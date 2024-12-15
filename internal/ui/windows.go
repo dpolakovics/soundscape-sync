@@ -2,16 +2,17 @@ package ui
 
 import (
     _ "embed"
+    "fmt"
     "net/url"
     "os/exec"
     "path/filepath"
     "runtime"
     "strings"
-    "fmt"
 
     "fyne.io/fyne/v2"
     "fyne.io/fyne/v2/container"
     "fyne.io/fyne/v2/dialog"
+    "fyne.io/fyne/v2/layout"
     "fyne.io/fyne/v2/widget"
 
     "github.com/dpolakovics/soundscape-sync/internal/logic"
@@ -20,7 +21,6 @@ import (
 //go:embed bmc.png
 var bmcPng []byte
 
-// tryLinuxNativeFolderDialog attempts to open a native OS folder selection dialog on Linux.
 func tryLinuxNativeFolderDialog() string {
     cmd := exec.Command("zenity", "--file-selection", "--directory")
     out, err := cmd.Output()
@@ -43,7 +43,6 @@ func tryLinuxNativeFolderDialog() string {
     return ""
 }
 
-// tryNativeFolderDialog attempts to open a native OS folder selection dialog.
 func tryNativeFolderDialog() string {
     switch runtime.GOOS {
     case "windows":
@@ -55,7 +54,6 @@ func tryNativeFolderDialog() string {
                 "$ofd.FileName = 'Folder Selection.'; "+
                 "if ($ofd.ShowDialog() -eq 'OK') { Split-Path $ofd.FileName }")
 
-        // Set SysProcAttr for Windows to hide window
         if runtime.GOOS == "windows" {
             cmd.SysProcAttr = getSysProcAttr()
         }
@@ -88,7 +86,6 @@ func tryNativeFolderDialog() string {
     }
 }
 
-// showFolderSelection attempts to show a native file dialog first. If it fails, fallback to Fyne's dialog.
 func showFolderSelection(win fyne.Window, callback func(string)) {
     nativePath := tryNativeFolderDialog()
     if nativePath != "" {
@@ -111,9 +108,7 @@ func showFolderSelection(win fyne.Window, callback func(string)) {
 func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
     var folder1, folder2, folderOutput string
 
-    folder1Button := widget.NewButton("Select the Folder with the Soundscape", nil)
-    folder2Button := widget.NewButton("Select the Folder with the Audiobook", nil)
-    folderOutputButton := widget.NewButton("Select the output Folder", nil)
+    heading := widget.NewLabelWithStyle("Soundscape Sync", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 
     folder1Label := widget.NewLabel("No folder selected")
     folder2Label := widget.NewLabel("No folder selected")
@@ -122,58 +117,72 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
     startButton := widget.NewButton("Start Sync", nil)
     startButton.Disable()
 
-    progressBar := widget.NewProgressBar()
-    progressBar.Hide()
-
-    folder1Button.OnTapped = func() {
+    folder1Button := widget.NewButton("Select the Folder with the Soundscape", func() {
         showFolderSelection(window, func(path string) {
             folder1 = path
             folder1Label.SetText(filepath.Base(path))
             updateStartButton(folder1Label, folder2Label, folderOutputLabel, startButton)
         })
-    }
+    })
 
-    folder2Button.OnTapped = func() {
+    folder2Button := widget.NewButton("Select the Folder with the Audiobook", func() {
         showFolderSelection(window, func(path string) {
             folder2 = path
             folder2Label.SetText(filepath.Base(path))
             updateStartButton(folder1Label, folder2Label, folderOutputLabel, startButton)
         })
-    }
+    })
 
-    folderOutputButton.OnTapped = func() {
+    folderOutputButton := widget.NewButton("Select the output Folder", func() {
         showFolderSelection(window, func(path string) {
             folderOutput = path
             folderOutputLabel.SetText(filepath.Base(path))
             updateStartButton(folder1Label, folder2Label, folderOutputLabel, startButton)
         })
-    }
+    })
 
-    volumeSliderValueLabel := widget.NewLabel("Soundscape Volume: 100%")
-    // Adjust slider to range from 50 to 100 to represent 50% to 100%
+    foldersCard := widget.NewCard(
+        "Folder Selection",
+        "Select input and output folders",
+        container.NewVBox(
+            container.NewHBox(folder1Button, folder1Label),
+            container.NewHBox(folder2Button, folder2Label),
+            container.NewHBox(folderOutputButton, folderOutputLabel),
+        ),
+    )
+
+    volumeSliderValueLabel := widget.NewLabel("Volume: 100%")
     volumeSlider := widget.NewSlider(50, 100)
     volumeSlider.Step = 1
     volumeSlider.Value = 100
     volumeSlider.OnChanged = func(v float64) {
-        volumeSliderValueLabel.SetText(fmt.Sprintf("Soundscape Volume: %.0f%%", v))
+        volumeSliderValueLabel.SetText(fmt.Sprintf("Volume: %.0f%%", v))
     }
 
-    // Use a grid wrap to give the slider a minimum width
-    sliderContainer := container.NewGridWrap(fyne.NewSize(300, volumeSlider.MinSize().Height), volumeSlider)
+    sliderContainer := container.NewGridWrap(fyne.NewSize(400, volumeSlider.MinSize().Height), volumeSlider)
 
-    // Add a label at the end of the slider to indicate default
-    volumeContainer := container.NewHBox(
-        sliderContainer,
-        widget.NewLabel("(Default: 100%)"),
+    volumeControls := container.NewVBox(
+        volumeSliderValueLabel,
+        container.NewHBox(
+            sliderContainer,
+            widget.NewLabel("(Default: 100%)"),
+        ),
     )
+
+    volumeCard := widget.NewCard(
+        "Volume Settings",
+        "Adjust the soundscape volume",
+        volumeControls,
+    )
+
+    progressBar := widget.NewProgressBar()
+    progressBar.Hide()
 
     startButton.OnTapped = func() {
         startButton.Disable()
         progressBar.Show()
         go func() {
-            // convert slider value (50-100) to 0.5-1.0 for logic
-            volume := volumeSlider.Value / 100.0
-            err := logic.CombineFiles(folder1, folder2, folderOutput, progressBar, volume)
+            err := logic.CombineFiles(folder1, folder2, folderOutput, progressBar, volumeSlider.Value)
             if err != nil {
                 dialog.ShowError(err, window)
             } else {
@@ -184,29 +193,48 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
         }()
     }
 
+    actionCard := widget.NewCard(
+        "",
+        "",
+        container.NewVBox(
+            startButton,
+            progressBar,
+        ),
+    )
+
     bmcResource := fyne.NewStaticResource("bmc.png", bmcPng)
     bmcButton := widget.NewButtonWithIcon("Buy me a coffee", bmcResource, func() {
         u, _ := url.Parse("https://www.buymeacoffee.com/razormind")
         _ = app.OpenURL(u)
     })
 
-    newText := "I am an individual developer who has created an app for Soundscape synchronization."
-    newText += "\nI hope this app helps you as much as it has helped me."
-    newText += "\nIf you find it useful, please consider buying me a coffee. Thank you!"
-    multiLineEntry := widget.NewMultiLineEntry()
-    multiLineEntry.SetText(newText)
+    newText := "I am an individual developer who has created an app for Soundscape synchronization.\n" +
+        "I hope this app helps you as much as it has helped me.\n" +
+        "If you find it useful, please consider buying me a coffee. Thank you!"
+    
+    // Use a label for static text to ensure consistent, visible color
+    aboutLabel := widget.NewLabel(newText)
+    aboutLabel.Wrapping = fyne.TextWrapWord
 
-    return container.NewVBox(
-        container.NewHBox(folder1Button, folder1Label),
-        container.NewHBox(folder2Button, folder2Label),
-        container.NewHBox(folderOutputButton, folderOutputLabel),
-        volumeSliderValueLabel,
-        volumeContainer,
-        startButton,
-        multiLineEntry,
-        bmcButton,
-        progressBar,
+    supportCard := widget.NewCard(
+        "About & Support",
+        "",
+        container.NewVBox(
+            aboutLabel,
+            bmcButton,
+        ),
     )
+
+    content := container.NewVBox(
+        heading,
+        foldersCard,
+        volumeCard,
+        actionCard,
+        supportCard,
+    )
+
+    outer := container.New(layout.NewPaddedLayout(), content)
+    return outer
 }
 
 func updateStartButton(label1, label2, folderOutputLabel *widget.Label, button *widget.Button) {
