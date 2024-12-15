@@ -18,9 +18,6 @@ It is important that both folders have the same amount of Files and that the fil
 - [x] Make it possible to Sync with spatial Audio Soundscapes
 - [ ] Make it usable with Mac
 - [ ] Generate a package for Ubuntu
-- [ ] Better handling of file mapping
-- [x] add cover art for mp3
-- [x] add cover art for m4b
 - [x] load metadata from audiobook
 
 ## Support Me

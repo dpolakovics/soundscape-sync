@@ -40,7 +40,10 @@ func getAudioFiles(folder string) ([]string, error) {
     return audioFiles, nil
 }
 
-func CombineFiles(folder1 string, folder2 string, outputFolder string, progress *widget.ProgressBar) error {
+func CombineFiles(folder1 string, folder2 string, outputFolder string, progress *widget.ProgressBar, soundscapeVolume float64) error {
+    // Adjust volume to range [0.5, 1.0]
+    soundscapeVolume = 0.5 + (soundscapeVolume / 100.0 * 0.5)
+
     // Get list of audio files from both folders
     files1, err := getAudioFiles(folder1)
     if err != nil {
@@ -69,11 +72,11 @@ func CombineFiles(folder1 string, folder2 string, outputFolder string, progress 
             return err
         }
 
-        channelArguments, err := getChannelArguments(channel)
+        channelArguments, err := getChannelArguments(channel, soundscapeVolume)
         if err != nil {
             return err
         }
-        
+
         // Get output file name
         ext := filepath.Ext(file)
         newFileName := outputFolder + "/" + filepath.Base(files2[index])
@@ -165,16 +168,16 @@ func getBaseArguments() []string {
   }
 }
 
-func getChannelArguments(channels int) ([]string, error) {
+func getChannelArguments(channels int, volume float64) ([]string, error) {
   switch channels {
     case 2:
-      return getStereoArguments(), nil
+      return getStereoArguments(volume), nil
     case 6:
-      return get5_1Arguments(), nil
+      return get5_1Arguments(volume), nil
     case 10:
-      return get7_1_2Arguments(), nil
+      return get7_1_2Arguments(volume), nil
     case 12:
-      return get7_1_4Arguments(), nil
+      return get7_1_4Arguments(volume), nil
   }
   return nil, fmt.Errorf("Currently only stereo, 5.1, 7.1.2 and 7.1.4 Soundscapes are supported")
 }

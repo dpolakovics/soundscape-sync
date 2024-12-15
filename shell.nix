@@ -1,16 +1,4 @@
 { pkgs ? import <nixpkgs> {} }:
-# with import <nixpkgs> {
-#   crossSystem = {
-#     config = "x86_64-w64-mingw32";
-#   };
-# };
-# let
-#   # pkgs = (import <nixpkgs>{ crossSystem = {config = "x86_64-w64-mingw32";}; });
-#   pkgs = import <nixpkgs> {
-#     localSystem = "x86_64-linux"; # buildPlatform
-#     crossSystem = "x86_64-w64-mingw32"; # Note the `config` part!
-#   };
-# in
 pkgs.mkShell {
   buildInputs = with pkgs; [
     go
@@ -24,7 +12,7 @@ pkgs.mkShell {
     delve
     pkg-config
     clang
-    pkg-config
+    gcc
     glib
     cairo
     pango
@@ -39,6 +27,7 @@ pkgs.mkShell {
     xorg.libXi
     xorg.libXrandr
     xorg.libXinerama
+    xorg.libXxf86vm
     libxkbcommon
     libGL
     mesa
@@ -53,6 +42,8 @@ pkgs.mkShell {
       pkgs.xorg.libXcursor
       pkgs.xorg.libXi
       pkgs.xorg.libXrandr
+      pkgs.xorg.libXinerama
+      pkgs.xorg.libXxf86vm
       pkgs.libxkbcommon
     ]}:$LD_LIBRARY_PATH
     export GOPATH=$HOME/go
