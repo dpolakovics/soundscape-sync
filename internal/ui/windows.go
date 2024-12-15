@@ -7,6 +7,7 @@ import (
     "path/filepath"
     "runtime"
     "strings"
+    "fmt"
 
     "fyne.io/fyne/v2"
     "fyne.io/fyne/v2/container"
@@ -148,16 +149,31 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
         })
     }
 
-    volumeSliderValueLabel := widget.NewLabel("Adjust Soundscape volume")
-    volumeSlider := widget.NewSlider(0, 100)
+    volumeSliderValueLabel := widget.NewLabel("Soundscape Volume: 100%")
+    // Adjust slider to range from 50 to 100 to represent 50% to 100%
+    volumeSlider := widget.NewSlider(50, 100)
     volumeSlider.Step = 1
     volumeSlider.Value = 100
+    volumeSlider.OnChanged = func(v float64) {
+        volumeSliderValueLabel.SetText(fmt.Sprintf("Soundscape Volume: %.0f%%", v))
+    }
+
+    // Use a grid wrap to give the slider a minimum width
+    sliderContainer := container.NewGridWrap(fyne.NewSize(300, volumeSlider.MinSize().Height), volumeSlider)
+
+    // Add a label at the end of the slider to indicate default
+    volumeContainer := container.NewHBox(
+        sliderContainer,
+        widget.NewLabel("(Default: 100%)"),
+    )
 
     startButton.OnTapped = func() {
         startButton.Disable()
         progressBar.Show()
         go func() {
-            err := logic.CombineFiles(folder1, folder2, folderOutput, progressBar, volumeSlider.Value)
+            // convert slider value (50-100) to 0.5-1.0 for logic
+            volume := volumeSlider.Value / 100.0
+            err := logic.CombineFiles(folder1, folder2, folderOutput, progressBar, volume)
             if err != nil {
                 dialog.ShowError(err, window)
             } else {
@@ -185,7 +201,7 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
         container.NewHBox(folder2Button, folder2Label),
         container.NewHBox(folderOutputButton, folderOutputLabel),
         volumeSliderValueLabel,
-        volumeSlider,
+        volumeContainer,
         startButton,
         multiLineEntry,
         bmcButton,
