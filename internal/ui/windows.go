@@ -178,25 +178,32 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
     progressBar := widget.NewProgressBar()
     progressBar.Hide()
 
+    statusLabel := widget.NewLabel("Idle")
+
     startButton.OnTapped = func() {
         startButton.Disable()
         progressBar.Show()
-        go func() {
-            err := logic.CombineFiles(folder1, folder2, folderOutput, progressBar, volumeSlider.Value)
-            if err != nil {
-                dialog.ShowError(err, window)
-            } else {
-                dialog.ShowInformation("Success", "Audio files combined successfully", window)
-            }
-            progressBar.Hide()
-            startButton.Enable()
-        }()
+        // Run CombineFiles synchronously on the main goroutine
+        err := logic.CombineFiles(folder1, folder2, folderOutput, progressBar, volumeSlider.Value, func(msg string) {
+            // Safe to call directly because we're on the main goroutine
+            statusLabel.SetText(msg)
+        })
+        progressBar.Hide()
+        if err != nil {
+            dialog.ShowError(err, window)
+            statusLabel.SetText("Error during combination")
+        } else {
+            dialog.ShowInformation("Success", "Audio files combined successfully", window)
+            statusLabel.SetText("Done")
+        }
+        startButton.Enable()
     }
 
     actionCard := widget.NewCard(
         "",
         "",
         container.NewVBox(
+            statusLabel,
             startButton,
             progressBar,
         ),
@@ -211,8 +218,7 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
     newText := "I am an individual developer who has created an app for Soundscape synchronization.\n" +
         "I hope this app helps you as much as it has helped me.\n" +
         "If you find it useful, please consider buying me a coffee. Thank you!"
-    
-    // Use a label for static text to ensure consistent, visible color
+
     aboutLabel := widget.NewLabel(newText)
     aboutLabel.Wrapping = fyne.TextWrapWord
 

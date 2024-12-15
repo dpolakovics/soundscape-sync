@@ -40,7 +40,8 @@ func getAudioFiles(folder string) ([]string, error) {
     return audioFiles, nil
 }
 
-func CombineFiles(folder1 string, folder2 string, outputFolder string, progress *widget.ProgressBar, soundscapeVolume float64) error {
+// Add a statusCallback parameter to allow updates on what is happening
+func CombineFiles(folder1 string, folder2 string, outputFolder string, progress *widget.ProgressBar, soundscapeVolume float64, statusCallback func(string)) error {
     // Adjust volume to range [0.5, 1.0]
     soundscapeVolume = 0.5 + (soundscapeVolume / 100.0 * 0.5)
 
@@ -59,10 +60,11 @@ func CombineFiles(folder1 string, folder2 string, outputFolder string, progress 
     }
 
     ffmpeg := ff.FFmpegPath()
-
     total := len(files1)
 
     for index, file := range files1 {
+        statusCallback(fmt.Sprintf("Preparing to combine file %d of %d: %s", index+1, total, filepath.Base(file)))
+
         channel , err := getChannelAmount(file)
         if err != nil {
             return err
@@ -103,6 +105,8 @@ func CombineFiles(folder1 string, folder2 string, outputFolder string, progress 
           return err
         }
 
+        statusCallback(fmt.Sprintf("Combining file %d of %d...", index+1, total))
+
         // Execute FFmpeg command
         if err := cmd.Start(); err != nil {
             err = fmt.Errorf("error at ffmpeg command start: %w", err)
@@ -115,8 +119,11 @@ func CombineFiles(folder1 string, folder2 string, outputFolder string, progress 
             err = fmt.Errorf("error at ffmpeg command wait: %w", err)
             return err
         }
+
+        statusCallback(fmt.Sprintf("Finished combining file %d of %d", index+1, total))
     }
 
+    statusCallback("All files combined successfully!")
     return nil
 }
 
@@ -194,20 +201,17 @@ func getCoverArtArguments(file1 string, file2 string) []string {
 }
 
 func testCoverArt(filePath string) bool {
-    // Open the audio file
     f, err := os.Open(filePath)
     if err != nil {
         return false
     }
     defer f.Close()
 
-    // Use taglib to parse the audio file
     metadata, err := tag.ReadFrom(f)
     if err != nil {
       return false
     }
 
-    // Check if there is any artwork
     if metadata.Picture() != nil {
       return true
     }
