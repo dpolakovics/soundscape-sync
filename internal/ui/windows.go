@@ -95,7 +95,7 @@ func showFolderSelection(win fyne.Window, callback func(string)) {
 
     dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
         if err != nil {
-            dialog.ShowError(err, win)
+            showErrorDialog(win, fmt.Errorf("Failed to open folder selection dialog: %w. If this issue persists, please contact the developer.", err))
             return
         }
         if uri == nil {
@@ -180,17 +180,18 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
 
     statusLabel := widget.NewLabel("Idle")
 
+    // Add a checkbox for debug mode
+    debugCheck := widget.NewCheck("Debug Mode", func(checked bool) {})
+
     startButton.OnTapped = func() {
         startButton.Disable()
         progressBar.Show()
-        // Run CombineFiles synchronously on the main goroutine
-        err := logic.CombineFiles(folder1, folder2, folderOutput, progressBar, volumeSlider.Value, func(msg string) {
-            // Safe to call directly because we're on the main goroutine
+        err := logic.CombineFiles(folder1, folder2, folderOutput, progressBar, volumeSlider.Value, debugCheck.Checked, func(msg string) {
             statusLabel.SetText(msg)
         })
         progressBar.Hide()
         if err != nil {
-            dialog.ShowError(err, window)
+            showErrorDialog(window, fmt.Errorf("An error occurred while combining the audio files: %w. Check that the input files are valid and supported. If you continue to encounter this issue, consider seeking help from the developer and providing the details above.", err))
             statusLabel.SetText("Error during combination")
         } else {
             dialog.ShowInformation("Success", "Audio files combined successfully", window)
@@ -204,6 +205,7 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
         "",
         container.NewVBox(
             statusLabel,
+            debugCheck,
             startButton,
             progressBar,
         ),
@@ -249,4 +251,23 @@ func updateStartButton(label1, label2, folderOutputLabel *widget.Label, button *
     } else {
         button.Disable()
     }
+}
+
+func showErrorDialog(win fyne.Window, err error) {
+    if err == nil {
+        return
+    }
+
+    errorStr := err.Error()
+    copyButton := widget.NewButton("Copy Error", func() {
+        win.Clipboard().SetContent(errorStr)
+    })
+
+    errorLabel := widget.NewLabel(errorStr)
+    errorLabel.Wrapping = fyne.TextWrapWord
+
+    content := container.NewVBox(errorLabel, copyButton)
+    d := dialog.NewCustom("Error", "Close", content, win)
+    d.Resize(fyne.NewSize(700, 500))
+    d.Show()
 }

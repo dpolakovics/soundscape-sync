@@ -1,10 +1,10 @@
 package logic
 
 import (
-  "io"
   "bufio"
   "context"
   "fmt"
+  "io"
   "io/ioutil"
   "os"
   "os/exec"
@@ -15,7 +15,6 @@ import (
 
   "fyne.io/fyne/v2/widget"
   "github.com/dhowden/tag"
-
   ff "github.com/dpolakovics/soundscape-sync/internal/ffmpeg"
 )
 
@@ -40,23 +39,20 @@ func getAudioFiles(folder string) ([]string, error) {
     return audioFiles, nil
 }
 
-// Add a statusCallback parameter to allow updates on what is happening
-func CombineFiles(folder1 string, folder2 string, outputFolder string, progress *widget.ProgressBar, soundscapeVolume float64, statusCallback func(string)) error {
-    // Adjust volume to range [0.5, 1.0]
+func CombineFiles(folder1 string, folder2 string, outputFolder string, progress *widget.ProgressBar, soundscapeVolume float64, debug bool, statusCallback func(string)) error {
     soundscapeVolume = 0.5 + (soundscapeVolume / 100.0 * 0.5)
 
-    // Get list of audio files from both folders
     files1, err := getAudioFiles(folder1)
     if err != nil {
-        return err
+        return fmt.Errorf("failed to read audio files from folder1 (%s): %w. Check folder permissions or file formats and try again.", folder1, err)
     }
     files2, err := getAudioFiles(folder2)
     if err != nil {
-        return err
+        return fmt.Errorf("failed to read audio files from folder2 (%s): %w. Check folder permissions or file formats and try again.", folder2, err)
     }
 
     if len(files1) != len(files2) {
-        return fmt.Errorf("the number of audio files in the two folders must be the same")
+        return fmt.Errorf("the number of audio files in the two folders does not match: folder1 has %d files, folder2 has %d files. Please ensure both folders contain the same number of audio files and that they are in the correct order before retrying.", len(files1), len(files2))
     }
 
     ffmpeg := ff.FFmpegPath()
@@ -65,7 +61,7 @@ func CombineFiles(folder1 string, folder2 string, outputFolder string, progress 
     for index, file := range files1 {
         statusCallback(fmt.Sprintf("Preparing to combine file %d of %d: %s", index+1, total, filepath.Base(file)))
 
-        channel , err := getChannelAmount(file)
+        channel, err := getChannelAmount(file)
         if err != nil {
             return err
         }
@@ -79,12 +75,10 @@ func CombineFiles(folder1 string, folder2 string, outputFolder string, progress 
             return err
         }
 
-        // Get output file name
         ext := filepath.Ext(file)
         newFileName := outputFolder + "/" + filepath.Base(files2[index])
         newFileName = newFileName[:len(newFileName)-4] + "_synced" + ext
 
-        // Construct FFmpeg command
         ctx, _ := context.WithCancel(context.Background())
         arguments := []string{
             "-i", file,
@@ -95,28 +89,33 @@ func CombineFiles(folder1 string, folder2 string, outputFolder string, progress 
         if ext == ".mp3" || ext == ".flac" {
           arguments = append(arguments, getCoverArtArguments(file, files2[index])...)
         }
+
+        // If debug mode is enabled, add verbose logging arguments
+        if debug {
+            arguments = append(arguments, "-loglevel", "verbose")
+        }
+
         arguments = append(arguments, newFileName)
+
         cmd := exec.CommandContext(ctx, ffmpeg, arguments...)
         cmd.SysProcAttr = getSysProcAttr()
         stdout, err := cmd.StdoutPipe()
         if err != nil {
-          // prepend error with text
-          err = fmt.Errorf("error creating ffmpeg command: %w", err)
+          err = fmt.Errorf("error creating FFmpeg command pipeline (arguments: %v): %w. Consider running with more detailed logging or contacting the developer if the problem persists.", cmd.Args, err)
           return err
         }
 
         statusCallback(fmt.Sprintf("Combining file %d of %d...", index+1, total))
 
-        // Execute FFmpeg command
         if err := cmd.Start(); err != nil {
-            err = fmt.Errorf("error at ffmpeg command start: %w", err)
+            err = fmt.Errorf("error starting FFmpeg command with arguments %v: %w. Check that the input files are accessible and not corrupted. If the issue persists, contact the developer.", cmd.Args, err)
             return err
         }
 
         parseProgress(index, total, progress, stdout, duration)
 
         if err := cmd.Wait(); err != nil {
-            err = fmt.Errorf("error at ffmpeg command wait: %w", err)
+            err = fmt.Errorf("FFmpeg encountered an error while processing file %q with arguments %v: %w. Check the input files for issues or consider contacting the developer for further assistance.", newFileName, cmd.Args, err)
             return err
         }
 
@@ -133,11 +132,11 @@ func getChannelAmount(file string) (int, error) {
     cmd := exec.Command(ffprobe, "-v", "error", "-select_streams", "a:0", "-count_packets", "-show_entries", "stream=channels", "-of", "csv=p=0", file)
     out, err := cmd.Output()
     if err != nil {
-        return 0, err
+        return 0, fmt.Errorf("failed to determine channel amount for file %q: %w. The file might be corrupted or unsupported.", file, err)
     }
     channels, err := strconv.Atoi(strings.TrimSuffix(strings.TrimSpace(string(out)), ","))
     if err != nil {
-        return 0, err
+        return 0, fmt.Errorf("invalid channel information retrieved for file %q: %w. Please ensure the file is a valid audio file and consider reporting this issue if it persists.", file, err)
     }
     return channels, nil
 }
@@ -148,7 +147,7 @@ func getDuration(filename string) (float64, error) {
     cmd := exec.Command(ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", filename)
     out, err := cmd.Output()
     if err != nil {
-        return 0, err
+        return 0, fmt.Errorf("failed to determine duration for file %q: %w. The file might be corrupted or unsupported. If issues persist, consider contacting the developer.", filename, err)
     }
     return strconv.ParseFloat(strings.TrimSpace(string(out)), 64)
 }
@@ -186,7 +185,7 @@ func getChannelArguments(channels int, volume float64) ([]string, error) {
     case 12:
       return get7_1_4Arguments(volume), nil
   }
-  return nil, fmt.Errorf("Currently only stereo, 5.1, 7.1.2 and 7.1.4 Soundscapes are supported")
+  return nil, fmt.Errorf("unsupported soundscape format with %d channels. Currently only stereo (2 channels), 5.1 (6 channels), 7.1.2 (10 channels), and 7.1.4 (12 channels) are supported. Please convert your files or contact the developer for assistance.", channels)
 }
 
 func getCoverArtArguments(file1 string, file2 string) []string {
