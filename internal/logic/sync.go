@@ -39,7 +39,7 @@ func getAudioFiles(folder string) ([]string, error) {
     return audioFiles, nil
 }
 
-func CombineFiles(folder1 string, folder2 string, outputFolder string, progress *widget.ProgressBar, soundscapeVolume float64, statusCallback func(string)) error {
+func CombineFiles(folder1 string, folder2 string, outputFolder string, progress *widget.ProgressBar, soundscapeVolume float64, debug bool, statusCallback func(string)) error {
     soundscapeVolume = 0.5 + (soundscapeVolume / 100.0 * 0.5)
 
     files1, err := getAudioFiles(folder1)
@@ -89,6 +89,12 @@ func CombineFiles(folder1 string, folder2 string, outputFolder string, progress 
         if ext == ".mp3" || ext == ".flac" {
           arguments = append(arguments, getCoverArtArguments(file, files2[index])...)
         }
+
+        // If debug mode is enabled, add verbose logging arguments
+        if debug {
+            arguments = append(arguments, "-loglevel", "verbose")
+        }
+
         arguments = append(arguments, newFileName)
 
         cmd := exec.CommandContext(ctx, ffmpeg, arguments...)

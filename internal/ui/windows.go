@@ -180,10 +180,13 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
 
     statusLabel := widget.NewLabel("Idle")
 
+    // Add a checkbox for debug mode
+    debugCheck := widget.NewCheck("Debug Mode", func(checked bool) {})
+
     startButton.OnTapped = func() {
         startButton.Disable()
         progressBar.Show()
-        err := logic.CombineFiles(folder1, folder2, folderOutput, progressBar, volumeSlider.Value, func(msg string) {
+        err := logic.CombineFiles(folder1, folder2, folderOutput, progressBar, volumeSlider.Value, debugCheck.Checked, func(msg string) {
             statusLabel.SetText(msg)
         })
         progressBar.Hide()
@@ -202,6 +205,7 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
         "",
         container.NewVBox(
             statusLabel,
+            debugCheck,
             startButton,
             progressBar,
         ),
