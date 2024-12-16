@@ -2,7 +2,11 @@ package main
 
 import (
     "context"
+    "fmt"
     "net/url"
+    "strconv"
+    "strings"
+
     "github.com/dpolakovics/soundscape-sync/internal/ui"
 
     "fyne.io/fyne/v2"
@@ -12,9 +16,6 @@ import (
     "fyne.io/fyne/v2/widget"
 
     "github.com/google/go-github/v39/github"
-    "fmt"
-    "strings"
-    "strconv"
 )
 
 const (
@@ -40,7 +41,7 @@ func checkForUpdates(a fyne.App, w fyne.Window) {
     client := github.NewClient(nil)
     release, _, err := client.Repositories.GetLatestRelease(context.Background(), owner, repo)
     if err != nil {
-        dialog.ShowError(err, w)
+        showErrorDialog(w, fmt.Errorf("Failed to check for the latest release: %w. Please ensure you have an internet connection, and if the issue persists, reach out to the developer.", err))
         return
     }
 
@@ -61,7 +62,6 @@ func checkForUpdates(a fyne.App, w fyne.Window) {
 }
 
 func isNewerVersion(oldVer, newVer string) bool {
-    // Strip leading 'v'
     oldVer = strings.TrimPrefix(oldVer, "v")
     newVer = strings.TrimPrefix(newVer, "v")
 
@@ -78,6 +78,24 @@ func isNewerVersion(oldVer, newVer string) bool {
         }
     }
 
-    // If all matched so far, then a longer new version means it's newer
     return len(newParts) > len(oldParts)
+}
+
+func showErrorDialog(win fyne.Window, err error) {
+    if err == nil {
+        return
+    }
+
+    errorStr := err.Error()
+    copyButton := widget.NewButton("Copy Error", func() {
+        win.Clipboard().SetContent(errorStr)
+    })
+
+    errorLabel := widget.NewLabel(errorStr)
+    errorLabel.Wrapping = fyne.TextWrapWord
+
+    content := container.NewVBox(errorLabel, copyButton)
+    d := dialog.NewCustom("Error", "Close", content, win)
+    d.Resize(fyne.NewSize(700, 500))
+    d.Show()
 }
