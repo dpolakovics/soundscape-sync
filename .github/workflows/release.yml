@@ -1,10 +1,8 @@
 name: Release
-
 on:
   push:
     tags:
-      - 'v*.*'  # Adjust this pattern based on your tagging
-
+      - 'v*.*'
 permissions:
   contents: write
 
@@ -81,7 +79,22 @@ jobs:
         echo '</dict>' >> SoundscapeSync.app/Contents/Info.plist
         echo '</plist>' >> SoundscapeSync.app/Contents/Info.plist
         chmod +x SoundscapeSync.app/Contents/MacOS/SoundscapeSync
-        zip -r SoundscapeSync.app.zip SoundscapeSync.app
+    - name: Install certificate
+      run: |
+        mkdir -p ~/certs
+        echo "$MAC_CERT_P12" | base64 --decode > ~/certs/mac_dev_cert.p12
+        security create-keychain -p "" build.keychain
+        security import ~/certs/mac_dev_cert.p12 -k build.keychain -P "$MAC_CERT_P12_PASSWORD" -A
+        security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p "" build.keychain
+    - name: Sign App
+      run: |
+        codesign --deep --force --options runtime --sign "Developer ID Application: Cloonar Technologies GmbH" SoundscapeSync.app
+    - name: Verify signature
+      run: codesign --verify --deep --strict --verbose=2 SoundscapeSync.app
+    - name: Zip macOS build
+      run: zip -r SoundscapeSync.app.zip SoundscapeSync.app
     - name: Upload macOS artifact
       uses: actions/upload-artifact@v4
       with:
@@ -110,31 +123,6 @@ jobs:
           draft: false
           prerelease: true
 
-      # - uses: actions/download-artifact@v4
-      #   with:
-      #     name: linux-build
-      # - name: Prepare DEB package
-      #   run: |
-      #     mkdir -p .debpkg/DEBIAN
-      #     echo "Package: SoundscapeSync" > .debpkg/DEBIAN/control
-      #     echo "Version: ${{ github.event.inputs.version }}" >> .debpkg/DEBIAN/control
-      #     echo "Architecture: amd64" >> .debpkg/DEBIAN/control
-      #     echo "Maintainer: Dominik Polakovics <dominik.polakovics@cloonar.com>" >> .debpkg/DEBIAN/control
-      #     mkdir -p .debpkg/usr/bin
-      #     cp fyne-cross/bin/linux-amd64/soundscape-sync .debpkg/usr/bin
-      # - name: Create DEB package
-      #   uses: jiro4989/build-deb-action@v3
-      #   with:
-      #     package: SoundscapeSync
-      #     package_root: .debpkg
-      #     maintainer: "Dominik Polakovics <dominik.polakovics@cloonar.com>"
-      #     version: "${{ github.event.inputs.version }}"
-      #     arch: 'amd64'
-      #     desc: 'This is my sample package.'
-      #     depends: 'ffmpeg'
-      # - name: get file name
-      #   run: |
-      #     mv *.deb soundscapesync-${{ github.event.inputs.version }}.deb
       - uses: actions/download-artifact@v4
         with:
           name: linux-build

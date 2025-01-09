@@ -1,6 +1,4 @@
 name: Cross-compile with fyne-cross
-
-
 on:
   push:
     branches:
@@ -90,7 +88,22 @@ jobs:
         echo '</dict>' >> SoundscapeSync.app/Contents/Info.plist
         echo '</plist>' >> SoundscapeSync.app/Contents/Info.plist
         chmod +x SoundscapeSync.app/Contents/MacOS/SoundscapeSync
-        zip -r SoundscapeSync.app.zip SoundscapeSync.app
+    - name: Install certificate
+      run: |
+        mkdir -p ~/certs
+        echo "$MAC_CERT_P12" | base64 --decode > ~/certs/mac_dev_cert.p12
+        security create-keychain -p "" build.keychain
+        security import ~/certs/mac_dev_cert.p12 -k build.keychain -P "$MAC_CERT_P12_PASSWORD" -A
+        security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p "" build.keychain
+    - name: Sign App
+      run: |
+        codesign --deep --force --options runtime --sign "Developer ID Application: Cloonar Technologies GmbH" SoundscapeSync.app
+    - name: Verify signature
+      run: codesign --verify --deep --strict --verbose=2 SoundscapeSync.app
+    - name: Zip macOS build
+      run: zip -r SoundscapeSync.app.zip SoundscapeSync.app
     - name: Upload macOS artifact
       uses: actions/upload-artifact@v4
       with:
