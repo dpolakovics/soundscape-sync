@@ -92,6 +92,7 @@ jobs:
       env:
         MAC_CERT_P12: ${{ secrets.MAC_CERT_P12 }}
         MAC_CERT_P12_PASSWORD: ${{ secrets.MAC_CERT_P12_PASSWORD }}
+        MAC_CERT_NAME: ${{ secrets.MAC_CERT_NAME }}
       run: |
         echo "Length of MAC_CERT_P12 is ${#MAC_CERT_P12}"
         echo "MAC_CERT_P12_PASSWORD is set: ${MAC_CERT_P12_PASSWORD:+yes}"
@@ -104,7 +105,7 @@ jobs:
         security unlock-keychain -p "" build.keychain
     - name: Sign App
       run: |
-        codesign --deep --force --options runtime --sign "Developer ID Application: Cloonar Technologies GmbH" SoundscapeSync.app
+        codesign --deep --force --options runtime --sign "$MAC_CERT_NAME" SoundscapeSync.app
     - name: Verify signature
       run: codesign --verify --deep --strict --verbose=2 SoundscapeSync.app
     - name: Zip macOS build
