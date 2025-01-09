@@ -80,6 +80,9 @@ jobs:
         echo '</plist>' >> SoundscapeSync.app/Contents/Info.plist
         chmod +x SoundscapeSync.app/Contents/MacOS/SoundscapeSync
     - name: Install certificate
+      env:
+        MAC_CERT_P12: ${{ secrets.MAC_CERT_P12 }}
+        MAC_CERT_P12_PASSWORD: ${{ secrets.MAC_CERT_P12_PASSWORD }}
       run: |
         mkdir -p ~/certs
         echo "$MAC_CERT_P12" | base64 --decode > ~/certs/mac_dev_cert.p12
