@@ -90,6 +90,8 @@ jobs:
         chmod +x SoundscapeSync.app/Contents/MacOS/SoundscapeSync
     - name: Install certificate
       run: |
+        echo "Length of MAC_CERT_P12 is ${#MAC_CERT_P12}"
+        echo "MAC_CERT_P12_PASSWORD is set: ${MAC_CERT_P12_PASSWORD:+yes}"
         mkdir -p ~/certs
         echo "$MAC_CERT_P12" | base64 --decode > ~/certs/mac_dev_cert.p12
         security create-keychain -p "" build.keychain
