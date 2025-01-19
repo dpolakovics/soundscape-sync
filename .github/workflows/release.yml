@@ -100,6 +100,20 @@ jobs:
       run: codesign --verify --deep --strict --verbose=2 SoundscapeSync.app
     - name: Zip macOS build
       run: zip -r SoundscapeSync.app.zip SoundscapeSync.app
+    - name: Notarize App
+      if: ${{ secrets.APPLE_ID && secrets.APPLE_TEAM_ID && secrets.APPLE_PASSWORD }}
+      env:
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+      run: |
+        xcrun notarytool submit SoundscapeSync.app.zip --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_PASSWORD" --wait
+    - name: Staple Notarization
+      if: ${{ secrets.APPLE_ID && secrets.APPLE_TEAM_ID && secrets.APPLE_PASSWORD }}
+      run: xcrun stapler staple SoundscapeSync.app
+    - name: Re-zip macOS build
+      if: ${{ secrets.APPLE_ID && secrets.APPLE_TEAM_ID && secrets.APPLE_PASSWORD }}
+      run: zip -r SoundscapeSync.app.zip SoundscapeSync.app
     - name: Upload macOS artifact
       uses: actions/upload-artifact@v4
       with:

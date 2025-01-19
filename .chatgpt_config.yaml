@@ -2,5 +2,12 @@ project_name: "soundscape-sync"
 default_prompt_blocks:
   - "basic-prompt"
   - "go-development"
+  - "secure-coding"
+  - "workflow-prompt"
 initial_files:
   - "README.md"
+
+preview_changes: false
+interactive_file_selection: false
+partial_acceptance: false
+enable_step_by_step: true
