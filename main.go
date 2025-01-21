@@ -21,7 +21,7 @@ import (
 const (
     owner      = "dpolakovics"
     repo       = "soundscape-sync"
-    currentTag = "v1.0.3"
+    currentTag = "v1.0.2"
 )
 
 func main() {
