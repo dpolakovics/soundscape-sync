@@ -269,8 +269,11 @@ func showErrorDialog(win fyne.Window, err error) {
 	errorLabel := widget.NewLabel(errorStr)
 	errorLabel.Wrapping = fyne.TextWrapWord
 
-	content := container.NewVBox(errorLabel, copyButton)
+	scrollableError := container.NewScroll(errorLabel)
+	scrollableError.SetMinSize(fyne.NewSize(680, 400)) // Ensure the scroll area has a good default size
+
+	content := container.NewVBox(scrollableError, copyButton)
 	d := dialog.NewCustom("Error", "Close", content, win)
-	d.Resize(fyne.NewSize(700, 500))
+	// d.Resize(fyne.NewSize(700, 500)) // Resize might be less critical or handled by content
 	d.Show()
 }

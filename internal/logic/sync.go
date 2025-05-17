@@ -2,10 +2,12 @@ package logic
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,8 +28,7 @@ func getAudioFiles(folder string) ([]string, error) {
 
 	var audioFiles []string
 	for _, file := range files {
-    if !file.IsDir() && (
-      strings.HasSuffix(file.Name(), ".mp3") ||
+		if !file.IsDir() && (strings.HasSuffix(file.Name(), ".mp3") ||
 			strings.HasSuffix(file.Name(), ".wav") ||
 			strings.HasSuffix(file.Name(), ".m4b") ||
 			strings.HasSuffix(file.Name(), ".mp4")) {
@@ -97,26 +98,38 @@ func CombineFiles(folder1 string, folder2 string, outputFolder string, progress 
 
 		arguments = append(arguments, newFileName)
 
+		if debug {
+			log.Printf("Executing FFmpeg command: %s %s", ffmpeg, strings.Join(arguments, " "))
+		}
+
 		cmd := exec.CommandContext(ctx, ffmpeg, arguments...)
 		cmd.SysProcAttr = getSysProcAttr()
+
+		var stderr bytes.Buffer
+		cmd.Stderr = &stderr
+
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
-			err = fmt.Errorf("error creating FFmpeg command pipeline (arguments: %v): %w. Consider running with more detailed logging or contacting the developer if the problem persists.", cmd.Args, err)
+			err = fmt.Errorf("error creating FFmpeg stdout pipe (arguments: %v): %w", cmd.Args, err)
 			return err
 		}
 
 		statusCallback(fmt.Sprintf("Combining file %d of %d...", index+1, total))
 
 		if err := cmd.Start(); err != nil {
-			err = fmt.Errorf("error starting FFmpeg command with arguments %v: %w. Check that the input files are accessible and not corrupted. If the issue persists, contact the developer.", cmd.Args, err)
+			err = fmt.Errorf("error starting FFmpeg command with arguments %v: %w. Stderr: %s", cmd.Args, err, stderr.String())
 			return err
 		}
 
 		parseProgress(index, total, progress, stdout, duration)
 
 		if err := cmd.Wait(); err != nil {
-			err = fmt.Errorf("FFmpeg encountered an error while processing file %q with arguments %v: %w. Check the input files for issues or consider contacting the developer for further assistance.", newFileName, cmd.Args, err)
+			err = fmt.Errorf("FFmpeg encountered an error while processing file %q with arguments %v: %w. FFmpeg stderr: %s", newFileName, cmd.Args, err, stderr.String())
 			return err
+		}
+
+		if debug && stderr.Len() > 0 {
+			log.Printf("FFmpeg stderr output for %s:\n%s", filepath.Base(newFileName), stderr.String())
 		}
 
 		statusCallback(fmt.Sprintf("Finished combining file %d of %d", index+1, total))
@@ -190,11 +203,12 @@ func getChannelArguments(channels int, volume float64) ([]string, error) {
 
 func getCoverArtArguments(file1 string, file2 string) []string {
 	arguments := []string{}
-	if testCoverArt(file1) {
-		arguments = append(arguments, "-map", "0:v", "-c:v", "copy", "-disposition:v", "attached_pic")
-	}
-	if testCoverArt(file2) {
+	// file1 is the soundscape file (ffmpeg input 1)
+	// file2 is the audiobook file (ffmpeg input 0)
+	if testCoverArt(file1) { // If soundscape file (input 1) has cover art
 		arguments = append(arguments, "-map", "1:v", "-c:v", "copy", "-disposition:v", "attached_pic")
+	} else if testCoverArt(file2) { // If audiobook file (input 0) has cover art
+		arguments = append(arguments, "-map", "0:v", "-c:v", "copy", "-disposition:v", "attached_pic")
 	}
 	return arguments
 }
