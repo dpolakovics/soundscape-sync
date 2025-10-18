@@ -141,16 +141,26 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
 		})
 	})
 
+	// Create instruction labels with text wrapping for better responsiveness
+	soundscapeInstruction := widget.NewLabel("(Download Mp3 Binaural for Syncing Folder from Google Drive)")
+	soundscapeInstruction.Wrapping = fyne.TextWrapWord
+
+	audiobookInstruction := widget.NewLabel("(Email proof of audiobook purchase to alongexpectedsoundscape@gmail.com for individual chapter files folder)")
+	audiobookInstruction.Wrapping = fyne.TextWrapWord
+
+	outputInstruction := widget.NewLabel("(A new folder to store your synced Soundscape)")
+	outputInstruction.Wrapping = fyne.TextWrapWord
+
 	foldersCard := widget.NewCard(
 		"Folder Selection",
 		"Select input and output folders",
 		container.NewVBox(
 			container.NewHBox(folder1Button, folder1Label),
-			widget.NewLabel("(Download Mp3 Binaural for Syncing Folder from Google Drive)"),
+			soundscapeInstruction,
 			container.NewHBox(folder2Button, folder2Label),
-			widget.NewLabel("(Email proof of audiobook purchase to alongexpectedsoundscape@gmail.com for individual chapter files folder)"),
+			audiobookInstruction,
 			container.NewHBox(folderOutputButton, folderOutputLabel),
-			widget.NewLabel("(A new folder to store your synced Soundscape)"),
+			outputInstruction,
 		),
 	)
 
@@ -180,7 +190,6 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
 	volumeControls := container.NewVBox(
 		widget.NewLabel("Mix Preset:"),
 		mixSelect,
-		widget.NewLabel("(Adjust the balance between audiobook and soundscape)"),
 	)
 
 	volumeCard := widget.NewCard(
@@ -266,8 +275,10 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
 		supportCard,
 	)
 
-	outer := container.New(layout.NewPaddedLayout(), content)
-	return outer
+	// Wrap content in scroll container for responsiveness on smaller screens
+	paddedContent := container.New(layout.NewPaddedLayout(), content)
+	scrollContent := container.NewScroll(paddedContent)
+	return scrollContent
 }
 
 func updateStartButton(label1, label2, folderOutputLabel *widget.Label, button *widget.Button) {

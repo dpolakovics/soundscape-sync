@@ -34,6 +34,8 @@ func main() {
 	checkForUpdates(myApp, mainWindow)
 
 	mainWindow.Resize(fyne.NewSize(800, 600))
+	mainWindow.SetFixedSize(false) // Allow window resizing for different screen sizes
+	mainWindow.CenterOnScreen()
 	mainWindow.ShowAndRun()
 }
 
