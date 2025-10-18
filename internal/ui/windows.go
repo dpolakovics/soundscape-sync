@@ -154,27 +154,38 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
 		),
 	)
 
-	volumeSliderValueLabel := widget.NewLabel("Volume: 100%")
-	volumeSlider := widget.NewSlider(50, 100)
-	volumeSlider.Step = 1
-	volumeSlider.Value = 100
-	volumeSlider.OnChanged = func(v float64) {
-		volumeSliderValueLabel.SetText(fmt.Sprintf("Volume: %.0f%%", v))
+	// Define mix presets with their volume multipliers
+	type MixPreset struct {
+		Name              string
+		AudiobookVolume   float64
+		SoundscapeVolume  float64
 	}
 
-	sliderContainer := container.NewGridWrap(fyne.NewSize(400, volumeSlider.MinSize().Height), volumeSlider)
+	mixPresets := []MixPreset{
+		{"Lowest Soundscape", 1.0, 0.251},     // Audiobook 0dB, Soundscape -12dB
+		{"Lower Soundscape", 1.0, 0.5},        // Audiobook 0dB, Soundscape -6dB
+		{"Recommended Mix", 1.0, 1.0},         // Audiobook 0dB, Soundscape 0dB
+		{"Higher Soundscape", 0.5, 1.0},       // Audiobook -6dB, Soundscape 0dB
+		{"Highest Soundscape", 0.251, 1.0},    // Audiobook -12dB, Soundscape 0dB
+	}
+
+	mixOptions := make([]string, len(mixPresets))
+	for i, preset := range mixPresets {
+		mixOptions[i] = preset.Name
+	}
+
+	mixSelect := widget.NewSelect(mixOptions, nil)
+	mixSelect.Selected = "Recommended Mix"
 
 	volumeControls := container.NewVBox(
-		volumeSliderValueLabel,
-		container.NewHBox(
-			sliderContainer,
-			widget.NewLabel("(Default: 100%)"),
-		),
+		widget.NewLabel("Mix Preset:"),
+		mixSelect,
+		widget.NewLabel("(Adjust the balance between audiobook and soundscape)"),
 	)
 
 	volumeCard := widget.NewCard(
-		"Volume Settings",
-		"Adjust the soundscape volume",
+		"Mix Settings",
+		"Choose the balance between audiobook and soundscape",
 		volumeControls,
 	)
 
@@ -189,7 +200,18 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
 	startButton.OnTapped = func() {
 		startButton.Disable()
 		progressBar.Show()
-		err := logic.CombineFiles(folder1, folder2, folderOutput, progressBar, volumeSlider.Value, debugCheck.Checked, func(msg string) {
+
+		// Get the selected mix preset volumes
+		var audiobookVol, soundscapeVol float64 = 1.0, 1.0 // defaults
+		for _, preset := range mixPresets {
+			if preset.Name == mixSelect.Selected {
+				audiobookVol = preset.AudiobookVolume
+				soundscapeVol = preset.SoundscapeVolume
+				break
+			}
+		}
+
+		err := logic.CombineFiles(folder1, folder2, folderOutput, progressBar, audiobookVol, soundscapeVol, debugCheck.Checked, func(msg string) {
 			statusLabel.SetText(msg)
 		})
 		progressBar.Hide()

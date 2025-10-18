@@ -40,8 +40,7 @@ func getAudioFiles(folder string) ([]string, error) {
 	return audioFiles, nil
 }
 
-func CombineFiles(folder1 string, folder2 string, outputFolder string, progress *widget.ProgressBar, soundscapeVolume float64, debug bool, statusCallback func(string)) error {
-	soundscapeVolume = 0.5 + (soundscapeVolume / 100.0 * 0.5)
+func CombineFiles(folder1 string, folder2 string, outputFolder string, progress *widget.ProgressBar, audiobookVolume float64, soundscapeVolume float64, debug bool, statusCallback func(string)) error {
 
 	files1, err := getAudioFiles(folder1)
 	if err != nil {
@@ -71,7 +70,7 @@ func CombineFiles(folder1 string, folder2 string, outputFolder string, progress 
 			return err
 		}
 
-		channelArguments, err := getChannelArguments(channel, soundscapeVolume)
+		channelArguments, err := getChannelArguments(channel, audiobookVolume, soundscapeVolume)
 		if err != nil {
 			return err
 		}
@@ -187,16 +186,16 @@ func getBaseArguments() []string {
 	}
 }
 
-func getChannelArguments(channels int, volume float64) ([]string, error) {
+func getChannelArguments(channels int, audiobookVolume float64, soundscapeVolume float64) ([]string, error) {
 	switch channels {
 	case 2:
-		return getStereoArguments(volume), nil
+		return getStereoArguments(audiobookVolume, soundscapeVolume), nil
 	case 6:
-		return get5_1Arguments(volume), nil
+		return get5_1Arguments(audiobookVolume, soundscapeVolume), nil
 	case 10:
-		return get7_1_2Arguments(volume), nil
+		return get7_1_2Arguments(audiobookVolume, soundscapeVolume), nil
 	case 12:
-		return get7_1_4Arguments(volume), nil
+		return get7_1_4Arguments(audiobookVolume, soundscapeVolume), nil
 	}
 	return nil, fmt.Errorf("unsupported soundscape format with %d channels. Currently only stereo (2 channels), 5.1 (6 channels), 7.1.2 (10 channels), and 7.1.4 (12 channels) are supported. Please convert your files or contact the developer for assistance.", channels)
 }
