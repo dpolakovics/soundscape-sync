@@ -11,9 +11,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"fyne.io/fyne/v2/widget"
 	"github.com/dhowden/tag"
@@ -40,7 +43,7 @@ func getAudioFiles(folder string) ([]string, error) {
 	return audioFiles, nil
 }
 
-func CombineFiles(folder1 string, folder2 string, outputFolder string, progress *widget.ProgressBar, soundscapeVolume float64, debug bool, statusCallback func(string)) error {
+func CombineFiles(folder1, folder2, outputFolder string, progress *widget.ProgressBar, soundscapeVolume float64, debug bool, statusCallback func(string), maxParallel int) error {
 	soundscapeVolume = 0.5 + (soundscapeVolume / 100.0 * 0.5)
 
 	files1, err := getAudioFiles(folder1)
@@ -51,13 +54,33 @@ func CombineFiles(folder1 string, folder2 string, outputFolder string, progress 
 	if err != nil {
 		return fmt.Errorf("failed to read audio files from folder2 (%s): %w. Check folder permissions or file formats and try again.", folder2, err)
 	}
-
 	if len(files1) != len(files2) {
 		return fmt.Errorf("the number of audio files in the two folders does not match: folder1 has %d files, folder2 has %d files. Please ensure both folders contain the same number of audio files and that they are in the correct order before retrying.", len(files1), len(files2))
 	}
 
 	ffmpeg := ff.FFmpegPath()
 	total := len(files1)
+	if total == 0 {
+		statusCallback("No files to process.")
+		return nil
+	}
+
+	// Pre-scan metadata so we can build commands and compute totalDuration.
+	type task struct {
+		index        int
+		ssFile       string // soundscape file (folder1)
+		bookFile     string // audiobook file (folder2)
+		ext          string
+		duration     float64
+		channelArgs  []string
+		coverArtArgs []string
+		output       string
+	}
+
+	var (
+		tasks         = make([]task, 0, total)
+		totalDuration float64
+	)
 
 	for index, file := range files1 {
 		statusCallback(fmt.Sprintf("Preparing to combine file %d of %d: %s", index+1, total, filepath.Base(file)))
@@ -70,7 +93,6 @@ func CombineFiles(folder1 string, folder2 string, outputFolder string, progress 
 		if err != nil {
 			return err
 		}
-
 		channelArguments, err := getChannelArguments(channel, soundscapeVolume)
 		if err != nil {
 			return err
@@ -80,62 +102,151 @@ func CombineFiles(folder1 string, folder2 string, outputFolder string, progress 
 		newFileName := outputFolder + "/" + filepath.Base(files2[index])
 		newFileName = newFileName[:len(newFileName)-4] + "_synced" + ext
 
-		ctx, _ := context.WithCancel(context.Background())
-		arguments := []string{
-			"-i", files2[index],
-			"-i", file,
-		}
-		arguments = append(arguments, channelArguments...)
-		arguments = append(arguments, getBaseArguments()...)
+		coverArgs := []string{}
 		if ext == ".mp3" || ext == ".flac" {
-			arguments = append(arguments, getCoverArtArguments(file, files2[index])...)
+			coverArgs = getCoverArtArguments(file, files2[index])
 		}
 
-		// If debug mode is enabled, add verbose logging arguments
-		if debug {
-			arguments = append(arguments, "-loglevel", "verbose")
+		tasks = append(tasks, task{
+			index:        index,
+			ssFile:       file,
+			bookFile:     files2[index],
+			ext:          ext,
+			duration:     duration,
+			channelArgs:  channelArguments,
+			coverArtArgs: coverArgs,
+			output:       newFileName,
+		})
+		totalDuration += duration
+	}
+
+	// Shared cancellation: abort remaining on first error.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Progress aggregation. Track latest seconds per task, sum to a global fraction.
+	latestByIndex := make([]int64, total) // store microseconds as int64 per task
+	var progressMu sync.Mutex
+	updateProgress := func(idx int, ms int64) {
+		atomic.StoreInt64(&latestByIndex[idx], ms)
+		if progress != nil && totalDuration > 0 {
+			// Compute aggregate fraction safely (cheap loop over slice)
+			var sumUs int64
+			for i := range latestByIndex {
+				sumUs += atomic.LoadInt64(&latestByIndex[i])
+			}
+			fraction := float64(sumUs) / 1000000.0 / totalDuration
+			if fraction > 1 {
+				fraction = 1
+			}
+			progressMu.Lock()
+			progress.SetValue(fraction)
+			progressMu.Unlock()
 		}
+	}
 
-		arguments = append(arguments, newFileName)
+	// Initialize progress bar to 0 at start
+	if progress != nil {
+		progress.SetValue(0)
+	}
 
-		if debug {
-			log.Printf("Executing FFmpeg command: %s %s", ffmpeg, strings.Join(arguments, " "))
+	// Concurrency limit.
+	if maxParallel <= 0 {
+		maxParallel = runtime.NumCPU()
+	}
+	if maxParallel < 1 {
+		maxParallel = 1
+	}
+	sem := make(chan struct{}, maxParallel)
+
+	// Error collection.
+	var firstErrMu sync.Mutex
+	var firstErr error
+	setFirstErr := func(err error) {
+		firstErrMu.Lock()
+		defer firstErrMu.Unlock()
+		if firstErr == nil {
+			firstErr = err
 		}
+	}
 
-		cmd := exec.CommandContext(ctx, ffmpeg, arguments...)
-		cmd.SysProcAttr = getSysProcAttr()
+	var wg sync.WaitGroup
+	for _, t := range tasks {
+		wg.Add(1)
+		tt := t
+		go func() {
+			defer wg.Done()
+			// Respect global cancel
+			select {
+			case sem <- struct{}{}:
+				defer func() { <-sem }()
+			case <-ctx.Done():
+				return
+			}
 
-		var stderr bytes.Buffer
-		cmd.Stderr = &stderr
+			if debug {
+				log.Printf("Starting FFmpeg for %s", filepath.Base(tt.output))
+			}
+			statusCallback(fmt.Sprintf("Combining file %d of %d...", tt.index+1, total))
 
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
-			err = fmt.Errorf("error creating FFmpeg stdout pipe (arguments: %v): %w", cmd.Args, err)
-			return err
-		}
+			args := []string{"-i", tt.bookFile, "-i", tt.ssFile}
+			args = append(args, tt.channelArgs...)
+			args = append(args, getBaseArguments()...)
+			args = append(args, tt.coverArtArgs...)
+			if debug {
+				args = append(args, "-loglevel", "verbose")
+			}
+			args = append(args, tt.output)
 
-		statusCallback(fmt.Sprintf("Combining file %d of %d...", index+1, total))
+			cmd := exec.CommandContext(ctx, ffmpeg, args...)
+			cmd.SysProcAttr = getSysProcAttr()
 
-		if err := cmd.Start(); err != nil {
-			err = fmt.Errorf("error starting FFmpeg command with arguments %v: %w. Stderr: %s", cmd.Args, err, stderr.String())
-			return err
-		}
+			var stderr bytes.Buffer
+			cmd.Stderr = &stderr
+			stdout, err := cmd.StdoutPipe()
+			if err != nil {
+				setFirstErr(fmt.Errorf("error creating FFmpeg stdout pipe (arguments: %v): %w", cmd.Args, err))
+				cancel()
+				return
+			}
 
-		parseProgress(index, total, progress, stdout, duration)
+			if debug {
+				log.Printf("Executing FFmpeg command: %s %s", ffmpeg, strings.Join(args, " "))
+			}
 
-		if err := cmd.Wait(); err != nil {
-			err = fmt.Errorf("FFmpeg encountered an error while processing file %q with arguments %v: %w. FFmpeg stderr: %s", newFileName, cmd.Args, err, stderr.String())
-			return err
-		}
+			if err := cmd.Start(); err != nil {
+				setFirstErr(fmt.Errorf("error starting FFmpeg command with arguments %v: %w. Stderr: %s", cmd.Args, err, stderr.String()))
+				cancel()
+				return
+			}
 
-		if debug && stderr.Len() > 0 {
-			log.Printf("FFmpeg stderr output for %s:\n%s", filepath.Base(newFileName), stderr.String())
-		}
+			// Progress reader for this task updates only its own latest ms
+			go parseProgressAggregate(tt.index, stdout, tt.duration, updateProgress)
 
-		statusCallback(fmt.Sprintf("Finished combining file %d of %d", index+1, total))
+			if err := cmd.Wait(); err != nil {
+				setFirstErr(fmt.Errorf("FFmpeg encountered an error while processing file %q with arguments %v: %w. FFmpeg stderr: %s", tt.output, cmd.Args, err, stderr.String()))
+				cancel()
+				return
+			}
+
+			if debug && stderr.Len() > 0 {
+				log.Printf("FFmpeg stderr output for %s:\n%s", filepath.Base(tt.output), stderr.String())
+			}
+
+			statusCallback(fmt.Sprintf("Finished combining file %d of %d", tt.index+1, total))
+		}()
+	}
+
+	wg.Wait()
+
+	if firstErr != nil {
+		return firstErr
 	}
 
 	statusCallback("All files combined successfully!")
+	if progress != nil {
+		progress.SetValue(1)
+	}
 	return nil
 }
 
@@ -229,4 +340,26 @@ func testCoverArt(filePath string) bool {
 		return true
 	}
 	return false
+}
+
+// parseProgressAggregate reads lines from FFmpeg -progress pipe and updates ms for a task.
+func parseProgressAggregate(taskIndex int, reader io.Reader, taskDurationSec float64, update func(idx int, ms int64)) {
+	scanner := bufio.NewScanner(reader)
+	var lastUs int64
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "out_time_ms=") {
+			usStr := strings.TrimPrefix(line, "out_time_ms=")
+			us, _ := strconv.ParseInt(usStr, 10, 64)
+			// clamp to task duration (value is in microseconds)
+			maxUs := int64(taskDurationSec * 1000000)
+			if us > maxUs {
+				us = maxUs
+			}
+			lastUs = us
+			update(taskIndex, lastUs)
+		}
+	}
+	// Ensure we mark completion even if final progress didn’t arrive
+	update(taskIndex, int64(taskDurationSec*1000000))
 }
