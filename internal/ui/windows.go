@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -186,12 +187,29 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
 	// Add a checkbox for debug mode
 	debugCheck := widget.NewCheck("Debug Mode", func(checked bool) {})
 
+	// Optional Max Concurrency selector (default to number of CPU cores)
+	numCPU := runtime.NumCPU()
+	concurrencyOptions := make([]string, 0, numCPU+1)
+	concurrencyOptions = append(concurrencyOptions, fmt.Sprintf("Auto (%d cores)", numCPU))
+	for i := 1; i <= numCPU; i++ {
+		concurrencyOptions = append(concurrencyOptions, fmt.Sprintf("%d", i))
+	}
+	concurrencySelect := widget.NewSelect(concurrencyOptions, func(string) {})
+	concurrencySelect.SetSelected(concurrencyOptions[0])
+
 	startButton.OnTapped = func() {
 		startButton.Disable()
 		progressBar.Show()
+		// Determine max concurrency from selection; 0 means Auto (NumCPU)
+		maxParallel := 0
+		if sel := concurrencySelect.Selected; sel != "" && !strings.HasPrefix(sel, "Auto") {
+			if v, errConv := strconv.Atoi(sel); errConv == nil && v > 0 {
+				maxParallel = v
+			}
+		}
 		err := logic.CombineFiles(folder1, folder2, folderOutput, progressBar, volumeSlider.Value, debugCheck.Checked, func(msg string) {
 			statusLabel.SetText(msg)
-		})
+		}, maxParallel)
 		progressBar.Hide()
 		if err != nil {
 			showErrorDialog(window, fmt.Errorf("An error occurred while combining the audio files: %w. Check that the input files are valid and supported. If you continue to encounter this issue, consider seeking help from the developer and providing the details above.", err))
@@ -208,6 +226,7 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
 		"",
 		container.NewVBox(
 			statusLabel,
+			container.NewHBox(widget.NewLabel("Max Concurrency"), concurrencySelect),
 			debugCheck,
 			startButton,
 			progressBar,
