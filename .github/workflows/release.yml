@@ -74,12 +74,20 @@ jobs:
           echo '<dict>' >> SoundscapeSync.app/Contents/Info.plist
           echo '  <key>CFBundleName</key>' >> SoundscapeSync.app/Contents/Info.plist
           echo '  <string>SoundscapeSync</string>' >> SoundscapeSync.app/Contents/Info.plist
+          echo '  <key>CFBundleDisplayName</key>' >> SoundscapeSync.app/Contents/Info.plist
+          echo '  <string>Soundscape Sync</string>' >> SoundscapeSync.app/Contents/Info.plist
           echo '  <key>CFBundleVersion</key>' >> SoundscapeSync.app/Contents/Info.plist
+          echo '  <string>1.0</string>' >> SoundscapeSync.app/Contents/Info.plist
+          echo '  <key>CFBundleShortVersionString</key>' >> SoundscapeSync.app/Contents/Info.plist
           echo '  <string>1.0</string>' >> SoundscapeSync.app/Contents/Info.plist
           echo '  <key>CFBundleIdentifier</key>' >> SoundscapeSync.app/Contents/Info.plist
           echo '  <string>com.cloonar.soundscape-sync</string>' >> SoundscapeSync.app/Contents/Info.plist
-          echo '  <key>Executable</key>' >> SoundscapeSync.app/Contents/Info.plist
+          echo '  <key>CFBundleExecutable</key>' >> SoundscapeSync.app/Contents/Info.plist
           echo '  <string>SoundscapeSync</string>' >> SoundscapeSync.app/Contents/Info.plist
+          echo '  <key>CFBundlePackageType</key>' >> SoundscapeSync.app/Contents/Info.plist
+          echo '  <string>APPL</string>' >> SoundscapeSync.app/Contents/Info.plist
+          echo '  <key>LSMinimumSystemVersion</key>' >> SoundscapeSync.app/Contents/Info.plist
+          echo '  <string>11.0</string>' >> SoundscapeSync.app/Contents/Info.plist
           echo '</dict>' >> SoundscapeSync.app/Contents/Info.plist
           echo '</plist>' >> SoundscapeSync.app/Contents/Info.plist
           chmod +x SoundscapeSync.app/Contents/MacOS/SoundscapeSync
@@ -103,11 +111,31 @@ jobs:
         env:
           MAC_CERT_NAME: ${{ secrets.MAC_CERT_NAME }}
         run: |
-          codesign --deep --force --options runtime --sign "$MAC_CERT_NAME" SoundscapeSync.app
+          # Sign the main executable first
+          codesign --force --options runtime \
+            --entitlements .github/workflows/entitlements.plist \
+            --sign "$MAC_CERT_NAME" \
+            --timestamp \
+            SoundscapeSync.app/Contents/MacOS/SoundscapeSync
+
+          # Then sign the app bundle
+          codesign --force --options runtime \
+            --entitlements .github/workflows/entitlements.plist \
+            --sign "$MAC_CERT_NAME" \
+            --timestamp \
+            SoundscapeSync.app
 
       - name: Verify signature
         if: ${{ env.APPLE_ID != '' && env.APPLE_TEAM_ID != '' && env.APPLE_PASSWORD != '' }}
-        run: codesign --verify --deep --strict --verbose=2 SoundscapeSync.app
+        run: |
+          # Verify codesign integrity
+          codesign --verify --strict --verbose=4 SoundscapeSync.app
+
+          # Display signature details
+          codesign --display --verbose=4 SoundscapeSync.app
+
+          # Check Gatekeeper assessment (will fail before notarization, but useful for debugging)
+          spctl --assess --verbose=4 --type execute SoundscapeSync.app || echo "Gatekeeper check failed (expected before notarization)"
 
       - name: Zip macOS build
         run: zip -r SoundscapeSync.app.zip SoundscapeSync.app
