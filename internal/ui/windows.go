@@ -172,11 +172,11 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
 	}
 
 	mixPresets := []MixPreset{
-		{"Lowest Soundscape", 1.0, 0.251},     // Audiobook 0dB, Soundscape -12dB
-		{"Lower Soundscape", 1.0, 0.5},        // Audiobook 0dB, Soundscape -6dB
+		{"Lowest Soundscape", 1.0, 0.1995},    // Audiobook 0dB, Soundscape -14dB
+		{"Lower Soundscape", 1.0, 0.4467},     // Audiobook 0dB, Soundscape -7dB
 		{"Recommended Mix", 1.0, 1.0},         // Audiobook 0dB, Soundscape 0dB
-		{"Higher Soundscape", 0.5, 1.0},       // Audiobook -6dB, Soundscape 0dB
-		{"Highest Soundscape", 0.251, 1.0},    // Audiobook -12dB, Soundscape 0dB
+		{"Higher Soundscape", 0.6310, 1.0},    // Audiobook -4dB, Soundscape 0dB
+		{"Highest Soundscape", 0.4467, 1.0},   // Audiobook -7dB, Soundscape 0dB
 	}
 
 	mixOptions := make([]string, len(mixPresets))
