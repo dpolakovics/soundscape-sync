@@ -11,9 +11,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"fyne.io/fyne/v2/widget"
 	"github.com/dhowden/tag"
@@ -40,7 +43,53 @@ func getAudioFiles(folder string) ([]string, error) {
 	return audioFiles, nil
 }
 
-func CombineFiles(folder1 string, folder2 string, outputFolder string, progress *widget.ProgressBar, audiobookVolume float64, soundscapeVolume float64, debug bool, statusCallback func(string)) error {
+// processingJob represents a single file pair to be processed
+type processingJob struct {
+	soundscapeFile string
+	audiobookFile  string
+	outputFile     string
+	index          int
+	fileSize       int64 // size of larger file for smart batching
+}
+
+// processingResult holds the outcome of processing a job
+type processingResult struct {
+	index   int
+	success bool
+	err     error
+}
+
+// getFileSize returns the size of a file in bytes
+func getFileSize(path string) (int64, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return 0, err
+	}
+	return info.Size(), nil
+}
+
+// getAvailableMemoryMB returns available system memory in MB
+// Returns 0 if unable to determine (will disable throttling)
+func getAvailableMemoryMB() int64 {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	// Use Sys (total memory obtained from OS) minus Alloc (currently allocated)
+	// This is a conservative estimate of available memory
+	available := (m.Sys - m.Alloc) / 1024 / 1024
+	return int64(available)
+}
+
+// shouldThrottleWorkers checks if we should reduce workers due to memory pressure
+// Returns true if available memory is below 500MB
+func shouldThrottleWorkers() bool {
+	available := getAvailableMemoryMB()
+	if available == 0 {
+		return false // Can't determine, don't throttle
+	}
+	return available < 500
+}
+
+func CombineFiles(folder1 string, folder2 string, outputFolder string, progress *widget.ProgressBar, audiobookVolume float64, soundscapeVolume float64, debug bool, useAllCores bool, statusCallback func(string)) error {
 
 	files1, err := getAudioFiles(folder1)
 	if err != nil {
@@ -55,87 +104,232 @@ func CombineFiles(folder1 string, folder2 string, outputFolder string, progress 
 		return fmt.Errorf("the number of audio files in the two folders does not match: folder1 has %d files, folder2 has %d files. Please ensure both folders contain the same number of audio files and that they are in the correct order before retrying.", len(files1), len(files2))
 	}
 
-	ffmpeg := ff.FFmpegPath()
 	total := len(files1)
 
+	// Determine number of workers based on useAllCores setting
+	numWorkers := runtime.NumCPU() / 2
+	if useAllCores {
+		numWorkers = runtime.NumCPU()
+	}
+	// Ensure at least 1 worker
+	if numWorkers < 1 {
+		numWorkers = 1
+	}
+	// Don't spawn more workers than files
+	if numWorkers > total {
+		numWorkers = total
+	}
+
+	statusCallback(fmt.Sprintf("Processing %d files using %d workers...", total, numWorkers))
+
+	// Phase 1: Smart batching - scan file sizes and create jobs
+	jobs := make([]processingJob, total)
 	for index, file := range files1 {
-		statusCallback(fmt.Sprintf("Preparing to combine file %d of %d: %s", index+1, total, filepath.Base(file)))
+		size1, err1 := getFileSize(file)
+		size2, err2 := getFileSize(files2[index])
 
-		channel, err := getChannelAmount(file)
-		if err != nil {
-			return err
-		}
-		duration, err := getDuration(file)
-		if err != nil {
-			return err
-		}
-
-		channelArguments, err := getChannelArguments(channel, audiobookVolume, soundscapeVolume)
-		if err != nil {
-			return err
+		// Use the larger of the two file sizes for sorting
+		fileSize := size1
+		if err1 == nil && err2 == nil && size2 > size1 {
+			fileSize = size2
 		}
 
 		ext := filepath.Ext(file)
-		newFileName := outputFolder + "/" + filepath.Base(files2[index])
-		newFileName = newFileName[:len(newFileName)-4] + "_synced" + ext
+		outputFile := outputFolder + "/" + filepath.Base(files2[index])
+		outputFile = outputFile[:len(outputFile)-4] + "_synced" + ext
 
-		ctx, _ := context.WithCancel(context.Background())
-		arguments := []string{
-			"-i", files2[index],
-			"-i", file,
+		jobs[index] = processingJob{
+			soundscapeFile: file,
+			audiobookFile:  files2[index],
+			outputFile:     outputFile,
+			index:          index,
+			fileSize:       fileSize,
 		}
-		arguments = append(arguments, channelArguments...)
-		arguments = append(arguments, getBaseArguments()...)
-		if ext == ".mp3" || ext == ".flac" {
-			arguments = append(arguments, getCoverArtArguments(file, files2[index])...)
+	}
+
+	// Calculate total size for weighted progress
+	var totalSize int64
+	for _, job := range jobs {
+		totalSize += job.fileSize
+	}
+
+	// Sort jobs by file size (largest first) for optimal scheduling
+	sort.Slice(jobs, func(i, j int) bool {
+		return jobs[i].fileSize > jobs[j].fileSize
+	})
+
+	// Phase 2: Set up worker pool infrastructure
+	jobChan := make(chan processingJob, total)
+	resultChan := make(chan processingResult, total)
+
+	var wg sync.WaitGroup
+	var progressMutex sync.Mutex
+	var completedFiles int32
+	var failedJobs []processingResult
+	var failedJobsMutex sync.Mutex
+
+	// Track progress per job for aggregate calculation
+	jobProgress := make(map[int]float64)
+	for i := 0; i < total; i++ {
+		jobProgress[i] = 0.0
+	}
+	var totalProgress float64 // Running total to avoid iterating map
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Worker function
+	worker := func(workerID int) {
+		defer wg.Done()
+
+		for job := range jobChan {
+			// Check for memory pressure and back off if needed
+			if shouldThrottleWorkers() {
+				if debug {
+					log.Printf("Worker %d: Memory pressure detected, pausing briefly", workerID)
+				}
+				runtime.GC() // Suggest garbage collection
+			}
+
+			result := processJob(ctx, job, total, progress, audiobookVolume, soundscapeVolume, debug, statusCallback, &progressMutex, jobProgress, &totalProgress, totalSize)
+			resultChan <- result
+
+			// Update completed count and status
+			completed := atomic.AddInt32(&completedFiles, 1)
+
+			// Thread-safe aggregate status update
+			progressMutex.Lock()
+			statusCallback(fmt.Sprintf("Processing files... (%d/%d completed) using %d workers", completed, total, numWorkers))
+			progressMutex.Unlock()
 		}
+	}
 
-		// If debug mode is enabled, add verbose logging arguments
-		if debug {
-			arguments = append(arguments, "-loglevel", "verbose")
+	// Phase 3: Start workers
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go worker(i)
+	}
+
+	// Phase 4: Send jobs to workers
+	go func() {
+		for _, job := range jobs {
+			jobChan <- job
 		}
+		close(jobChan)
+	}()
 
-		arguments = append(arguments, newFileName)
+	// Phase 5: Collect results
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
 
-		if debug {
-			log.Printf("Executing FFmpeg command: %s %s", ffmpeg, strings.Join(arguments, " "))
+	// Phase 6: Process results as they come in
+	for result := range resultChan {
+		if !result.success {
+			failedJobsMutex.Lock()
+			failedJobs = append(failedJobs, result)
+			failedJobsMutex.Unlock()
 		}
+	}
 
-		cmd := exec.CommandContext(ctx, ffmpeg, arguments...)
-		cmd.SysProcAttr = getSysProcAttr()
+	// Phase 7: Report final status
+	successCount := int(atomic.LoadInt32(&completedFiles)) - len(failedJobs)
 
-		var stderr bytes.Buffer
-		cmd.Stderr = &stderr
-
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
-			err = fmt.Errorf("error creating FFmpeg stdout pipe (arguments: %v): %w", cmd.Args, err)
-			return err
+	if len(failedJobs) > 0 {
+		// Build error message with all failures
+		var errMsg strings.Builder
+		errMsg.WriteString(fmt.Sprintf("Processing completed with %d successes and %d failures:\n", successCount, len(failedJobs)))
+		for _, failed := range failedJobs {
+			errMsg.WriteString(fmt.Sprintf("  - File %d: %v\n", failed.index+1, failed.err))
 		}
-
-		statusCallback(fmt.Sprintf("Combining file %d of %d...", index+1, total))
-
-		if err := cmd.Start(); err != nil {
-			err = fmt.Errorf("error starting FFmpeg command with arguments %v: %w. Stderr: %s", cmd.Args, err, stderr.String())
-			return err
-		}
-
-		parseProgress(index, total, progress, stdout, duration)
-
-		if err := cmd.Wait(); err != nil {
-			err = fmt.Errorf("FFmpeg encountered an error while processing file %q with arguments %v: %w. FFmpeg stderr: %s", newFileName, cmd.Args, err, stderr.String())
-			return err
-		}
-
-		if debug && stderr.Len() > 0 {
-			log.Printf("FFmpeg stderr output for %s:\n%s", filepath.Base(newFileName), stderr.String())
-		}
-
-		statusCallback(fmt.Sprintf("Finished combining file %d of %d", index+1, total))
+		statusCallback(fmt.Sprintf("Completed with %d failures", len(failedJobs)))
+		return fmt.Errorf("%s", errMsg.String())
 	}
 
 	statusCallback("All files combined successfully!")
 	return nil
+}
+
+// processJob handles the processing of a single file pair
+func processJob(ctx context.Context, job processingJob, total int, progress *widget.ProgressBar, audiobookVolume float64, soundscapeVolume float64, debug bool, statusCallback func(string), progressMutex *sync.Mutex, jobProgress map[int]float64, totalProgress *float64, totalSize int64) processingResult {
+	result := processingResult{
+		index:   job.index,
+		success: false,
+	}
+
+	channel, err := getChannelAmount(job.soundscapeFile)
+	if err != nil {
+		result.err = err
+		return result
+	}
+
+	duration, err := getDuration(job.soundscapeFile)
+	if err != nil {
+		result.err = err
+		return result
+	}
+
+	channelArguments, err := getChannelArguments(channel, audiobookVolume, soundscapeVolume)
+	if err != nil {
+		result.err = err
+		return result
+	}
+
+	ffmpeg := ff.FFmpegPath()
+	ext := filepath.Ext(job.soundscapeFile)
+
+	arguments := []string{
+		"-i", job.audiobookFile,
+		"-i", job.soundscapeFile,
+	}
+	arguments = append(arguments, channelArguments...)
+	arguments = append(arguments, getBaseArguments()...)
+	if ext == ".mp3" || ext == ".flac" {
+		arguments = append(arguments, getCoverArtArguments(job.soundscapeFile, job.audiobookFile)...)
+	}
+
+	// If debug mode is enabled, add verbose logging arguments
+	if debug {
+		arguments = append(arguments, "-loglevel", "verbose")
+	}
+
+	arguments = append(arguments, job.outputFile)
+
+	if debug {
+		log.Printf("Executing FFmpeg command for file %d: %s %s", job.index+1, ffmpeg, strings.Join(arguments, " "))
+	}
+
+	cmd := exec.CommandContext(ctx, ffmpeg, arguments...)
+	cmd.SysProcAttr = getSysProcAttr()
+
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		result.err = fmt.Errorf("error creating FFmpeg stdout pipe (arguments: %v): %w", cmd.Args, err)
+		return result
+	}
+
+	if err := cmd.Start(); err != nil {
+		result.err = fmt.Errorf("error starting FFmpeg command with arguments %v: %w. Stderr: %s", cmd.Args, err, stderr.String())
+		return result
+	}
+
+	parseProgress(job.index, total, progress, stdout, duration, progressMutex, jobProgress, totalProgress, job.fileSize, totalSize)
+
+	if err := cmd.Wait(); err != nil {
+		result.err = fmt.Errorf("FFmpeg encountered an error while processing file %q with arguments %v: %w. FFmpeg stderr: %s", job.outputFile, cmd.Args, err, stderr.String())
+		return result
+	}
+
+	if debug && stderr.Len() > 0 {
+		log.Printf("FFmpeg stderr output for %s:\n%s", filepath.Base(job.outputFile), stderr.String())
+	}
+
+	result.success = true
+	return result
 }
 
 func getChannelAmount(file string) (int, error) {
@@ -164,15 +358,51 @@ func getDuration(filename string) (float64, error) {
 	return strconv.ParseFloat(strings.TrimSpace(string(out)), 64)
 }
 
-func parseProgress(index int, total int, progress *widget.ProgressBar, reader io.Reader, duration float64) {
+func parseProgress(index int, total int, progress *widget.ProgressBar, reader io.Reader, duration float64, progressMutex *sync.Mutex, jobProgress map[int]float64, totalProgress *float64, fileSize int64, totalSize int64) {
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.HasPrefix(line, "out_time_ms=") {
-			timeMs, _ := strconv.ParseFloat(strings.TrimPrefix(line, "out_time_ms="), 64)
-			progressBase := float64(index) / float64(total)
-			progressAmount := progressBase + ((timeMs / 1000000) / float64(duration) / float64(total))
-			progress.SetValue(progressAmount)
+			timeMs, err := strconv.ParseFloat(strings.TrimPrefix(line, "out_time_ms="), 64)
+			if err != nil {
+				continue // Skip malformed progress lines
+			}
+
+			// Calculate this job's individual progress (0.0 to 1.0)
+			jobProgressValue := (timeMs / 1000000) / duration
+			if jobProgressValue > 1.0 {
+				jobProgressValue = 1.0
+			}
+
+			// Calculate this job's weight based on file size
+			var weight float64
+			if totalSize > 0 {
+				weight = float64(fileSize) / float64(totalSize)
+			} else {
+				// Fallback to equal weighting if totalSize is 0
+				weight = 1.0 / float64(total)
+			}
+
+			// Calculate new weighted progress for this job
+			newValue := jobProgressValue * weight
+
+			// Thread-safe progress bar update using delta calculation
+			progressMutex.Lock()
+
+			// Get old value and calculate delta
+			oldValue := jobProgress[index]
+			delta := newValue - oldValue
+
+			// Update this job's weighted progress in the map
+			jobProgress[index] = newValue
+
+			// Update running total by delta (O(1) instead of O(n) iteration)
+			*totalProgress += delta
+
+			// Set progress bar to the running total
+			progress.SetValue(*totalProgress)
+
+			progressMutex.Unlock()
 		}
 	}
 }

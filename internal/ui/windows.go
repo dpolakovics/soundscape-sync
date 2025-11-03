@@ -206,6 +206,9 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
 	// Add a checkbox for debug mode
 	debugCheck := widget.NewCheck("Debug Mode", func(checked bool) {})
 
+	// Add a checkbox for using all CPU cores
+	useAllCoresCheck := widget.NewCheck("Use all CPU cores (may impact system responsiveness)", func(checked bool) {})
+
 	startButton.OnTapped = func() {
 		startButton.Disable()
 		progressBar.Show()
@@ -220,7 +223,7 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
 			}
 		}
 
-		err := logic.CombineFiles(folder1, folder2, folderOutput, progressBar, audiobookVol, soundscapeVol, debugCheck.Checked, func(msg string) {
+		err := logic.CombineFiles(folder1, folder2, folderOutput, progressBar, audiobookVol, soundscapeVol, debugCheck.Checked, useAllCoresCheck.Checked, func(msg string) {
 			statusLabel.SetText(msg)
 		})
 		progressBar.Hide()
@@ -240,6 +243,7 @@ func CreateMainContent(app fyne.App, window fyne.Window) fyne.CanvasObject {
 		container.NewVBox(
 			statusLabel,
 			debugCheck,
+			useAllCoresCheck,
 			startButton,
 			progressBar,
 		),
