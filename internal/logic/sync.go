@@ -336,6 +336,7 @@ func getChannelAmount(file string) (int, error) {
 	ffprobe := ff.FFprobePath()
 
 	cmd := exec.Command(ffprobe, "-v", "error", "-select_streams", "a:0", "-count_packets", "-show_entries", "stream=channels", "-of", "csv=p=0", file)
+	cmd.SysProcAttr = getSysProcAttr()
 	out, err := cmd.Output()
 	if err != nil {
 		return 0, fmt.Errorf("failed to determine channel amount for file %q: %w. The file might be corrupted or unsupported.", file, err)
@@ -351,6 +352,7 @@ func getDuration(filename string) (float64, error) {
 	ffprobe := ff.FFprobePath()
 
 	cmd := exec.Command(ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", filename)
+	cmd.SysProcAttr = getSysProcAttr()
 	out, err := cmd.Output()
 	if err != nil {
 		return 0, fmt.Errorf("failed to determine duration for file %q: %w. The file might be corrupted or unsupported. If issues persist, consider contacting the developer.", filename, err)
