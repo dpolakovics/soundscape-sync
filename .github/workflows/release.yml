@@ -188,13 +188,17 @@ jobs:
           name: macos-build
           path: dist/macos
 
+      - run: |
+          mv checksum.txt dist/checksum.txt
+          mv dist/macos/SoundscapeSync.app.zip dist/macos/MacOS.zip
+          mv dist/linux/soundscape-sync dist/linux/soundscape-sync-linux-x86
+
       - name: Generate checksum
         uses: jmgilman/actions-generate-checksum@v1
         with:
           patterns: |
             dist/windows/SoundscapeSync.exe
-            dist/macos/SoundscapeSync.app.zip
-      - run: mv checksum.txt dist/checksum.txt
+            dist/macos/MacOS.zip
 
       - name: Create GitHub Release & upload assets
         uses: softprops/action-gh-release@v2
@@ -208,5 +212,5 @@ jobs:
           files: |
             dist/linux/**/*
             dist/windows/SoundscapeSync.exe
-            dist/macos/SoundscapeSync.app.zip
+            dist/macos/MacOS.zip
             dist/checksum.txt
