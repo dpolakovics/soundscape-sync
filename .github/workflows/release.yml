@@ -174,70 +174,39 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
-          body: ${{ steps.changelog.outputs.changes }}
-          draft: false
-          prerelease: true
-
+      # download all build artifacts
       - uses: actions/download-artifact@v4
         with:
           name: linux-build
-      - name: Upload Linux Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: soundscape-sync
-          asset_name: soundscape-sync-linux-x86
-          asset_content_type: application/octet-stream
-
+          path: dist/linux
       - uses: actions/download-artifact@v4
         with:
           name: windows-build
-      - name: Upload Windows Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: SoundscapeSync.exe
-          asset_name: SoundscapeSync.exe
-          asset_content_type: application/x-msdownload
-
+          path: dist/windows
       - uses: actions/download-artifact@v4
         with:
           name: macos-build
-      - name: Upload MacOS Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: SoundscapeSync.app.zip
-          asset_name: MacOS.zip
-          asset_content_type: application/zip
+          path: dist/macos
 
       - name: Generate checksum
         uses: jmgilman/actions-generate-checksum@v1
         with:
           patterns: |
-            SoundscapeSync.exe
-            SoundscapeSync.app.zip
+            dist/windows/SoundscapeSync.exe
+            dist/macos/SoundscapeSync.app.zip
+      - run: mv checksum.txt dist/checksum.txt
 
-      - name: Upload checksum
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create GitHub Release & upload assets
+        uses: softprops/action-gh-release@v2
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: checksum.txt
-          asset_name: checksum.txt
-          asset_content_type: text/plain
+          token: ${{ github.token }}
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: ${{ steps.changelog.outputs.changes }}
+          draft: false
+          prerelease: true
+          files: |
+            dist/linux/**/*
+            dist/windows/SoundscapeSync.exe
+            dist/macos/SoundscapeSync.app.zip
+            dist/checksum.txt
