@@ -189,7 +189,6 @@ jobs:
           path: dist/macos
 
       - run: |
-          mv checksum.txt dist/checksum.txt
           mv dist/macos/SoundscapeSync.app.zip dist/macos/MacOS.zip
           mv dist/linux/soundscape-sync dist/linux/soundscape-sync-linux-x86
 
@@ -213,4 +212,4 @@ jobs:
             dist/linux/**/*
             dist/windows/SoundscapeSync.exe
             dist/macos/MacOS.zip
-            dist/checksum.txt
+            checksum.txt
