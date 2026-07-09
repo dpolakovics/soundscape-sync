@@ -5,9 +5,9 @@ A simple tool to synchronize soundscape audio files with audiobook audio files.
 On Linux make sure that you have ffmpeg installed
 
 1. Execute SoundscapeSync
-2. Choose the Folder with the soundscape audio files
-3. Choose the Folder with the audiobook audio files
-4. Choose the Folder where the synchronized audio files should be saved
+2. Choose the folder with the soundscape audio files
+3. Choose the folder with the audiobook audio files
+4. Choose the folder where the synchronized audio files should be saved
 5. Click on the "Start" button
 
 ## Troubleshooting
