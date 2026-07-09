@@ -11,7 +11,7 @@ On Linux make sure that you have ffmpeg installed
 5. Click on the "Start" button
 
 ## Troubleshooting
-It is important that both folders have the same amount of Files and that the files are in the same order.
+It is important that both folders have the same number of files and that the files are in the same order.
 
 ## Features
 - [x] Add a progress bar
